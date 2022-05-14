@@ -7,9 +7,13 @@ pub struct Document {
 }
 
 impl Document {
+    /// # Errors
+    /// 
+    /// Will return `Err` if I/O error encountered while attempting to read file
+    /// specified by `filename`
     pub fn open(filename: &str) -> Result<Self, std::io::Error> {
         let contents = fs::read_to_string(filename)?;
-        let rows = contents.lines().map(|v| Row::from(v) ).collect();
+        let rows = contents.lines().map(Row::from).collect();
         Ok(Self { rows })
     }
 
