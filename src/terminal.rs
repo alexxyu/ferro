@@ -23,7 +23,7 @@ impl Terminal {
         Ok(Self {
             size: Size {
                 width: size.0,
-                height: size.1,
+                height: size.1.saturating_sub(2),
             },
             _stdout: stdout().into_raw_mode()?,
         })
@@ -39,6 +39,22 @@ impl Terminal {
     
     pub fn clear_current_line() {
         print!("{}", termion::clear::CurrentLine);
+    }
+
+    pub fn set_fg_color() {
+        print!("{}", termion::style::Invert);
+    }
+
+    pub fn reset_fg_color() {
+        print!("{}", termion::style::Reset);
+    }
+
+    pub fn set_bg_color() {
+        print!("{}", termion::style::Invert);
+    }
+
+    pub fn reset_bg_color() {
+        print!("{}", termion::style::Reset);
     }
 
     #[allow(clippy::cast_possible_truncation)]

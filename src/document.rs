@@ -4,9 +4,17 @@ use crate::Row;
 #[derive(Default)]
 pub struct Document {
     pub rows: Vec<Row>,
+    pub filename: Option<String>,
 }
 
 impl Document {
+    pub fn default() -> Self {
+        Document {
+            rows: vec![Row::default()],
+            filename: None,
+        }
+    }
+
     /// # Errors
     /// 
     /// Will return `Err` if I/O error encountered while attempting to read file
@@ -14,7 +22,10 @@ impl Document {
     pub fn open(filename: &str) -> Result<Self, std::io::Error> {
         let contents = fs::read_to_string(filename)?;
         let rows = contents.lines().map(Row::from).collect();
-        Ok(Self { rows })
+        Ok(Self {
+            rows,
+            filename: Some(filename.to_string()),
+        })
     }
 
     pub fn row(&self, index: usize) -> Option<&Row> {
