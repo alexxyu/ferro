@@ -8,6 +8,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const QUIT_TIMES: u8 = 3;
 
 fn die(e: &std::io::Error) {
     Terminal::clear_screen();
@@ -41,12 +42,13 @@ pub struct Editor {
     offset: Position,
     document: Document,
     status_message: StatusMessage,
+    quit_times: u8,
 }
 
 impl Editor {
     pub fn new() -> Self {
         let args: Vec<String> = env::args().collect();
-        let mut initial_status = String::from("HELP: Ctrl-C = quit");
+        let mut initial_status = String::from("HELP: Ctrl-S = save | Ctrl-C = quit");
         
         let document = if args.len() > 1 {
             let filename = &args[1];
@@ -68,6 +70,7 @@ impl Editor {
             offset: Position::default(),
             cursor_position: Position::default(),
             status_message: StatusMessage::from(initial_status),
+            quit_times: QUIT_TIMES,
         }
     }
 
@@ -109,13 +112,24 @@ impl Editor {
     fn draw_status_bar(&self) {
         let width = self.terminal.size().width as usize;
         let mut filename = "[No Name]".to_string();
+        let modified_indicator = if self.document.is_dirty() {
+            " (modified)"
+        } else {
+            ""
+        };
         
         if let Some(name) = &self.document.filename {
             filename = name.clone();
             filename.truncate(20);
         }
 
-        let mut status = format!("{} - {}", filename, self.document.len());
+        let mut status = format!(
+            "{} - {} lines{}",
+            filename,
+            self.document.len(),
+            modified_indicator
+        );
+        
         let line_indicator = format!(
             "{}/{}",
             self.cursor_position.y.saturating_add(1),
@@ -179,10 +193,39 @@ impl Editor {
         println!("{}\r", welcome_message);
     }
 
+    fn save(&mut self) {
+        if self.document.filename.is_none() {
+            let new_name = self.prompt("Save as: ").unwrap_or(None);
+            if new_name.is_none() {
+                self.status_message = StatusMessage::from("Save aborted.".to_string());
+                return;
+            }
+
+            self.document.filename = new_name;
+        }
+        if self.document.save().is_ok() {
+            self.status_message = StatusMessage::from("File saved successfully.".to_string());
+        } else {
+            self.status_message = StatusMessage::from("Error writing file!".to_string());
+        }
+    }
+
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
-            Key::Ctrl('c') => self.should_quit = true,
+            Key::Ctrl('c') => {
+                if self.quit_times > 0 && self.document.is_dirty() {
+                    self.status_message = StatusMessage::from(format!(
+                        "WARNING! File has unsaved changes. Press Ctrl-C {} more times to quit.",
+                        self.quit_times
+                    ));
+                    self.quit_times -= 1;
+                    return Ok(())
+                }
+
+                self.should_quit = true;
+            },
+            Key::Ctrl('s') => self.save(),
             Key::Char(c) => {
                 self.document.insert(&self.cursor_position, c);
                 self.move_cursor(Key::Right);
@@ -203,8 +246,42 @@ impl Editor {
             | Key::Home => self.move_cursor(pressed_key),
             _ => (),
         }
+
         self.scroll();
+        if self.quit_times < QUIT_TIMES {
+            self.quit_times = QUIT_TIMES;
+            self.status_message = StatusMessage::from(String::new());
+        }
         Ok(())
+    }
+
+    fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
+        let mut result = String::new();
+        loop {
+            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.refresh_screen()?;
+            match Terminal::read_key()? {
+                Key::Backspace => {
+                    if !result.is_empty() {
+                        result.truncate(result.len() - 1);
+                    }
+                },
+                Key::Char('\n') => break,
+                Key::Char(c) => {
+                    if !c.is_control() {
+                        result.push(c);
+                    }
+                },
+                Key::Esc => {
+                    result.truncate(0);
+                    break;
+                }
+                _ => (),
+            }
+        }
+
+        self.status_message = StatusMessage::from(String::new());
+        if result.is_empty() { Ok(None) } else { Ok(Some(result)) }
     }
 
     fn scroll(&mut self) {
