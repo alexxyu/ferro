@@ -51,9 +51,8 @@ impl Editor {
         let document = if args.len() > 1 {
             let filename = &args[1];
 
-            let doc = Document::open(filename);
-            if doc.is_ok() {
-                doc.unwrap()
+            if let Ok(doc) = Document::open(filename) {
+                doc
             } else {
                 initial_status = format!("ERR: Could not open file {}", filename);
                 Document::default()
