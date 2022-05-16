@@ -213,15 +213,28 @@ impl Editor {
     fn search(&mut self) {
         let old_position = self.cursor_position.clone();
         if let Some(query) = self
-            .prompt("Search: ", |editor, _, query| {
-                if let Some(position) = editor.document.find(&query) {
-                    editor.cursor_position = position;
-                    editor.scroll();
-                }
+            .prompt(
+                "Search (ESC to cancel, Arrows to navigate): ", 
+                |editor, key, query| {
+                    let mut moved = false;
+                    match key {
+                        Key::Right | Key::Down => {
+                            editor.move_cursor(Key::Right);
+                            moved = true;
+                        },
+                        _ => (),
+                    }
+
+                    if let Some(position) = editor.document.find(&query, &editor.cursor_position) {
+                        editor.cursor_position = position;
+                        editor.scroll();
+                    } else if moved {
+                        editor.move_cursor(Key::Left);
+                    }
             })
             .unwrap_or(None) 
         {
-            if let Some(position) = self.document.find(&query[..]) {
+            if let Some(position) = self.document.find(&query[..], &self.cursor_position) {
                 self.cursor_position = position;
             } else {
                 self.status_message = StatusMessage::from(format!("Not found: {}.", query))
@@ -264,8 +277,7 @@ impl Editor {
             | Key::Down
             | Key::Left
             | Key::Right
-            | Key::PageUp
-            | Key::PageDown
+            | Key::Ctrl('b' | 'f')
             | Key::End
             | Key::Home => self.move_cursor(pressed_key),
             _ => (),
