@@ -48,7 +48,8 @@ pub struct Editor {
 impl Editor {
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
-        let mut initial_status = String::from("HELP: Ctrl-S = save | Ctrl-C = quit");
+        let mut initial_status = 
+            String::from("HELP: Ctrl-L = look for | Ctrl-S = save | Ctrl-X = quit");
         
         let document = if let Some(filename) = args.get(1) {
             if let Ok(doc) = Document::open(filename) {
@@ -212,10 +213,10 @@ impl Editor {
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
-            Key::Ctrl('c') => {
+            Key::Ctrl('x') => {
                 if self.quit_times > 0 && self.document.is_dirty() {
                     self.status_message = StatusMessage::from(format!(
-                        "WARNING! File has unsaved changes. Press Ctrl-C {} more times to quit.",
+                        "WARNING! File has unsaved changes. Press Ctrl-X {} more times to quit.",
                         self.quit_times
                     ));
                     self.quit_times -= 1;
@@ -225,6 +226,15 @@ impl Editor {
                 self.should_quit = true;
             },
             Key::Ctrl('s') => self.save(),
+            Key::Ctrl('l') => {
+                if let Some(query) = self.prompt("Search: ").unwrap_or(None) {
+                    if let Some(position) = self.document.find(&query[..]) {
+                        self.cursor_position = position;
+                    } else {
+                        self.status_message = StatusMessage::from(format!("Not found: {}.", query))
+                    }
+                }
+            },
             Key::Char(c) => {
                 self.document.insert(&self.cursor_position, c);
                 self.move_cursor(Key::Right);
@@ -240,7 +250,8 @@ impl Editor {
             | Key::Down
             | Key::Left
             | Key::Right
-            | Key::Ctrl('f' | 'b')
+            | Key::PageUp
+            | Key::PageDown
             | Key::End
             | Key::Home => self.move_cursor(pressed_key),
             _ => (),

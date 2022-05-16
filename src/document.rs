@@ -96,6 +96,15 @@ impl Document {
         Ok(())
     }
 
+    pub fn find(&self, query: &str) -> Option<Position> {
+        for (y, row) in self.rows.iter().enumerate() {
+            if let Some(x) = row.find(query) {
+                return Some(Position { x, y });
+            }
+        }
+        None
+    }
+
     pub fn row(&self, index: usize) -> Option<&Row> {
         self.rows.get(index)
     }
