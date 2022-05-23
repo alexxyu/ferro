@@ -1,9 +1,12 @@
+use crate::highlighting;
 use crate::SearchDirection;
+use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Default)]
 pub struct Row {
     string: String,
+    highlighting: Vec<highlighting::Type>,
     len: usize,
 }
 
@@ -12,19 +15,38 @@ impl Row {
         let end = end.min(self.string.len());
         let start = start.min(end);
         let mut result = String::new();
+        let mut current_highlighting = &highlighting::Type::None;
 
-        for grapheme in self.string[..]
+        self.string[..]
             .graphemes(true)
+            .enumerate()
             .skip(start)
             .take(end - start)
-        {
-            if grapheme == "\t" {
-                result.push_str("  ");
-            } else {
-                result.push_str(grapheme);
-            }
-        }
+            .for_each(|(index, grapheme)| {
+                if let Some(c) = grapheme.chars().next() {
+                    let highlighting_type = self
+                        .highlighting
+                        .get(index)
+                        .unwrap_or(&highlighting::Type::None);
+                        
+                    if highlighting_type != current_highlighting {
+                        current_highlighting = highlighting_type;
+                        let start_highlight =
+                            format!("{}", termion::color::Fg(highlighting_type.to_color()));
+                        result.push_str(&start_highlight[..]);
+                    }
 
+                    if c == '\t' {
+                        result.push_str("  ");
+                    } else {
+                        result.push(c);
+                    }
+
+                }
+            });
+            
+        let end_highlight = format!("{}", termion::color::Fg(color::Reset));
+        result.push_str(&end_highlight[..]);
         result
     }
 
@@ -93,6 +115,7 @@ impl Row {
         self.len = length;
         Self {
             string: splitted_row,
+            highlighting: Vec::new(),
             len: splitted_length,
         }
     }
@@ -138,6 +161,18 @@ impl Row {
         None
     }
 
+    pub fn highlight(&mut self) {
+        let mut highlighting = Vec::new();
+        for c in self.string.chars() {
+            if c.is_ascii_digit() {
+                highlighting.push(highlighting::Type::Number);
+            } else {
+                highlighting.push(highlighting::Type::None);
+            }
+        }
+        self.highlighting = highlighting;
+    }
+
     pub fn len(&self) -> usize {
         self.len
     }
@@ -155,6 +190,7 @@ impl From<&str> for Row {
     fn from(slice: &str) -> Self {
         Self {
             string: String::from(slice),
+            highlighting: Vec::new(),
             len: slice.graphemes(true).count(),
         }
     }
