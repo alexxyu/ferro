@@ -16,7 +16,7 @@ impl Row {
         let end = end.min(self.string.len());
         let start = start.min(end);
         let mut result = String::new();
-        let mut current_highlighting = &highlighting::Type::None;
+        let mut current_highlighting = &highlighting::Type::Start;
 
         self.string[..]
             .graphemes(true)
@@ -42,10 +42,9 @@ impl Row {
                     } else {
                         result.push(c);
                     }
-
                 }
             });
-            
+
         let end_highlight = format!("{}", termion::color::Fg(color::Reset));
         result.push_str(&end_highlight[..]);
         result
