@@ -289,7 +289,7 @@ impl Editor {
             | Key::Down
             | Key::Left
             | Key::Right
-            | Key::Ctrl('b' | 'f')
+            | Key::Ctrl('b' | 'f' | 'a' | 'e')
             | Key::End
             | Key::Home => self.move_cursor(pressed_key),
             _ => (),
@@ -354,6 +354,8 @@ impl Editor {
 
     fn move_cursor(&mut self, key: Key) {
         let terminal_height = self.terminal.size().height as usize;
+        let terminal_width = self.terminal.size().width as usize;
+
         let Position { mut x, mut y } = self.cursor_position;
         let height = self.document.len();
         let mut width = if let Some(row) = self.document.row(y) {
@@ -391,6 +393,8 @@ impl Editor {
             },
             Key::Ctrl('b') => y = y.saturating_sub(terminal_height),
             Key::Ctrl('f') => y = y.saturating_add(terminal_height).min(height),
+            Key::Ctrl('a') => x = x.saturating_sub(terminal_width),
+            Key::Ctrl('e') => x = x.saturating_add(terminal_width).min(width),
             Key::Home      => x = 0,
             Key::End       => x = width,
             _              => (),
