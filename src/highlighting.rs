@@ -5,6 +5,7 @@ pub enum Type {
     None,
     Number,
     Match,
+    String,
 }
 
 impl Type {
@@ -12,6 +13,7 @@ impl Type {
         match self {
             Type::Number => &color::LightBlue,
             Type::Match => &color::Green,
+            Type::String => &color::LightRed,
             _ => &color::White,
         }
     }
