@@ -5,6 +5,8 @@ use crate::SearchDirection;
 use std::fs;
 use std::io::{Error, Write};
 
+const SPACES_PER_TAB: u8 = 4;
+
 #[derive(Default)]
 pub struct Document {
     rows: Vec<Row>,
@@ -58,7 +60,7 @@ impl Document {
         }
     }
     
-    pub fn insert(&mut self, at: &Position, c: char) {
+    pub fn insert(&mut self, at: &mut Position, c: char) {
         if at.y > self.rows.len() {
             return;
         }
@@ -66,6 +68,11 @@ impl Document {
         self.dirty = true;
         if c == '\n' {
             self.insert_newline(at);
+        } else if c == '\t' {
+            for _ in 0..SPACES_PER_TAB {
+                self.insert(at, ' ');
+            }
+            at.x += SPACES_PER_TAB as usize - 1;
         } else if at.y == self.rows.len() {
             let mut row = Row::default();
             row.insert(0, c);

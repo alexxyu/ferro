@@ -286,7 +286,7 @@ impl Editor {
             Key::Ctrl('s') => self.save(),
             Key::Ctrl('l') => self.search(),
             Key::Char(c) => {
-                self.document.insert(&self.cursor_position, c);
+                self.document.insert(&mut self.cursor_position, c);
                 self.move_cursor(Key::Right);
             },
             Key::Delete => self.document.delete(&self.cursor_position),
