@@ -34,7 +34,7 @@ impl Document {
 
         for line in contents.lines() {
             let mut row = Row::from(line);
-            row.highlight(file_type.highlighting_options(), None);
+            row.highlight(file_type.highlighting_options(), None, false);
             rows.push(row);
         };
 
@@ -56,8 +56,8 @@ impl Document {
         } else {
             let current_row = &mut self.rows[at.y];
             let mut new_row = current_row.split(at.x);
-            current_row.highlight(self.file_type.highlighting_options(), None);
-            new_row.highlight(self.file_type.highlighting_options(), None);
+            current_row.highlight(self.file_type.highlighting_options(), None, false);
+            new_row.highlight(self.file_type.highlighting_options(), None, false);
             self.rows.insert(at.y + 1, new_row);
         }
     }
@@ -76,12 +76,12 @@ impl Document {
         if at.y == self.rows.len() {
             let mut row = Row::default();
             row.insert(0, c);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
             self.rows.push(row);
         } else {
             let row = &mut self.rows[at.y];
             row.insert(at.x, c);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
         }
     }
     
@@ -96,11 +96,11 @@ impl Document {
             let next_row = self.rows.remove(at.y + 1);
             let row = &mut self.rows[at.y];
             row.append(&next_row);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
         } else {
             let row = &mut self.rows[at.y];
             row.delete(at.x);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
         }
     }
 
@@ -108,10 +108,15 @@ impl Document {
         if let Some(filename) = &self.filename {
             let mut file = fs::File::create(filename)?;
             self.file_type = FileType::from(filename);
+            let mut start_with_comment = false;
             for row in &mut self.rows {
                 file.write_all(row.as_bytes())?;
                 file.write_all(b"\n")?;
-                row.highlight(self.file_type.highlighting_options(), None);
+                start_with_comment = row.highlight(
+                    self.file_type.highlighting_options(),
+                    None,
+                    start_with_comment,
+                );
             }
             self.dirty = false;
         }
@@ -158,8 +163,13 @@ impl Document {
     }
 
     pub fn highlight(&mut self, word: Option<&str>) {
+        let mut start_with_comment = false;
         for row in &mut self.rows {
-            row.highlight(self.file_type.highlighting_options(), word);
+            start_with_comment = row.highlight(
+                self.file_type.highlighting_options(),
+                word,
+                start_with_comment,
+            );
         }
     }
 

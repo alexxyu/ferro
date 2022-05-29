@@ -9,6 +9,7 @@ pub enum Type {
     String,
     Character,
     Comment,
+    MultilineComment,
     PrimaryKeywords,
     SecondaryKeywords,
 }
@@ -23,7 +24,7 @@ impl Type {
             Type::Match => color::AnsiValue::rgb(0, 5, 0),
             Type::String => color::AnsiValue::rgb(5, 2, 2),
             Type::Character => color::AnsiValue::rgb(5, 4, 0),
-            Type::Comment => color::AnsiValue::rgb(3, 3, 3),
+            Type::Comment | Type::MultilineComment => color::AnsiValue::rgb(3, 3, 3),
             Type::PrimaryKeywords => color::AnsiValue::rgb(0, 4, 5),
             Type::SecondaryKeywords => color::AnsiValue::rgb(0, 5, 4),
             _ => color::AnsiValue::rgb(5, 5, 5),
