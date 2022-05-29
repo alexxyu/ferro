@@ -29,19 +29,12 @@ impl Document {
     /// specified by `filename`
     pub fn open(filename: &str) -> Result<Self, std::io::Error> {
         let contents = fs::read_to_string(filename)?;
-        let mut start_with_comment = false;
-        let mut rows = Vec::new();
         let file_type = FileType::from(filename);
 
-        for line in contents.lines() {
-            let mut row = Row::from(line);
-            start_with_comment = row.highlight(
-                file_type.highlighting_options(),
-                None,
-                start_with_comment
-            );
-            rows.push(row);
-        };
+        let rows = contents
+            .lines()
+            .map(Row::from)
+            .collect();
 
         Ok(Self {
             rows,
@@ -82,7 +75,14 @@ impl Document {
             row.insert(at.x, c);
         }
 
-        self.highlight(None);
+        self.unhighlight_rows(at.y);
+    }
+
+    fn unhighlight_rows(&mut self, start: usize) {
+        let start = start.saturating_sub(1);
+        for row in self.rows.iter_mut().skip(start) {
+            row.is_highlighted = false;
+        }
     }
     
     pub fn delete(&mut self, at: &Position) {
@@ -101,22 +101,16 @@ impl Document {
             row.delete(at.x);
         }
 
-        self.highlight(None);
+        self.unhighlight_rows(at.y);
     }
 
     pub fn save(&mut self) -> Result<(), Error> {
         if let Some(filename) = &self.filename {
             let mut file = fs::File::create(filename)?;
             self.file_type = FileType::from(filename);
-            let mut start_with_comment = false;
             for row in &mut self.rows {
                 file.write_all(row.as_bytes())?;
                 file.write_all(b"\n")?;
-                start_with_comment = row.highlight(
-                    self.file_type.highlighting_options(),
-                    None,
-                    start_with_comment,
-                );
             }
             self.dirty = false;
         }
@@ -162,9 +156,18 @@ impl Document {
         None
     }
 
-    pub fn highlight(&mut self, word: Option<&str>) {
+    pub fn highlight(&mut self, word: &Option<String>, until: Option<usize>) {
         let mut start_with_comment = false;
-        for row in &mut self.rows {
+        let until = if let Some(until) = until {
+            if until.saturating_add(1) < self.rows.len() {
+                until.saturating_add(1)
+            } else {
+                self.rows.len()
+            }
+        } else {
+            self.rows.len()
+        };
+        for row in &mut self.rows[..until] {
             start_with_comment = row.highlight(
                 self.file_type.highlighting_options(),
                 word,
