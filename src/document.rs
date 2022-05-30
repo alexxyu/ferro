@@ -2,17 +2,19 @@ use crate::FileType;
 use crate::Position;
 use crate::Row;
 use crate::SearchDirection;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{Error, Write};
 
-const SPACES_PER_TAB: u8 = 4;
+const DEFAULT_SPACES_PER_TAB: usize = 4;
 
 #[derive(Default)]
 pub struct Document {
-    rows: Vec<Row>,
     pub filename: Option<String>,
+    rows: Vec<Row>,
     dirty: bool,
     file_type: FileType,
+    spaces_per_tab: usize,
 }
 
 impl Document {
@@ -22,6 +24,7 @@ impl Document {
             filename: None,
             dirty: false,
             file_type: FileType::default(),
+            spaces_per_tab: DEFAULT_SPACES_PER_TAB,
         }
     }
 
@@ -33,17 +36,44 @@ impl Document {
         let contents = fs::read_to_string(filename)?;
         let file_type = FileType::from(filename);
 
-        let rows = contents
+        let mut rows: Vec<Row> = contents
             .lines()
             .map(Row::from)
             .collect();
+
+        let spaces_per_tab = Self::calculate_indent(&rows);
+        for row in rows.iter_mut() {
+            row.replace_tabs_with_spaces(spaces_per_tab);
+        }
 
         Ok(Self {
             rows,
             filename: Some(filename.to_string()),
             dirty: false,
             file_type,
+            spaces_per_tab: spaces_per_tab,
         })
+    }
+
+    fn calculate_indent(rows: &Vec<Row>) -> usize {
+        let mut indent_counts = HashMap::new();
+        let mut prev_indent = 0;
+        for row in rows.iter() {
+            if let Some(indent) = row.get_leading_spaces() {
+                let indent_diff = indent.abs_diff(prev_indent);
+                if indent_diff > 1 {
+                    let count = indent_counts.entry(indent_diff).or_insert(0);
+                    *count += 1;
+                }
+                prev_indent = indent;
+            }
+        }
+
+        indent_counts
+            .into_iter()
+            .max_by(|a, b| a.1.cmp(&b.1))
+            .map(|(k, _)| k)
+            .unwrap_or(DEFAULT_SPACES_PER_TAB)
     }
 
     fn insert_newline(&mut self, at: &Position) {
@@ -69,10 +99,10 @@ impl Document {
         if c == '\n' {
             self.insert_newline(at);
         } else if c == '\t' {
-            for _ in 0..SPACES_PER_TAB {
+            for _ in 0..self.spaces_per_tab {
                 self.insert(at, ' ');
             }
-            at.x += SPACES_PER_TAB as usize - 1;
+            at.x += self.spaces_per_tab as usize - 1;
         } else if at.y == self.rows.len() {
             let mut row = Row::default();
             row.insert(0, c);

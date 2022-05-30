@@ -13,6 +13,10 @@ pub struct Row {
 }
 
 impl Row {
+    pub fn replace_tabs_with_spaces(&mut self, spaces_per_tab: usize) {
+        self.string = self.string.replace("\t", " ".repeat(spaces_per_tab).as_str());
+    }
+
     pub fn render(&self, start: usize, end: usize) -> String {
         let end = end.min(self.string.len());
         let start = start.min(end);
@@ -483,6 +487,17 @@ impl Row {
 
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
+    }
+
+    pub fn get_leading_spaces(&self) -> Option<usize> {
+        let mut index = 0;
+        let chars: Vec<char> = self.string.chars().collect();
+
+        while index < self.string.len() && chars[index] == ' ' {
+            index += 1;
+        }
+
+        return if index == self.string.len() || index == 0 { None } else { Some(index) };
     }
 }
 
