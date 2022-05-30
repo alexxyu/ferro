@@ -8,7 +8,7 @@ pub struct HighlightingOptions {
     numbers: bool,
     strings: bool,
     characters: bool,
-    comments: bool,
+    comments: Option<String>,
     multiline_comments: bool,
     primary_keywords: Vec<String>,
     secondary_keywords: Vec<String>,
@@ -24,8 +24,8 @@ impl HighlightingOptions {
     pub fn characters(&self) -> bool {
         self.characters
     }
-    pub fn comments(&self) -> bool {
-        self.comments
+    pub fn comments(&self) -> &Option<String> {
+        &self.comments
     }
     pub fn multiline_comments(&self) -> bool {
         self.multiline_comments
@@ -56,7 +56,7 @@ impl FileType {
                     numbers: true,
                     strings: true,
                     characters: true,
-                    comments: true,
+                    comments: Some("//".to_string()),
                     multiline_comments: true,
                     primary_keywords: vec![
                         "as".to_string(),
@@ -136,7 +136,7 @@ impl FileType {
                     numbers: true,
                     strings: true,
                     characters: true,
-                    comments: true,
+                    comments: Some("//".to_string()),
                     multiline_comments: true,
                     primary_keywords: vec![
                         "abstract".to_string(),

@@ -304,19 +304,21 @@ impl Row {
         &mut self,
         index: &mut usize,
         opts: &HighlightingOptions,
-        c: char,
+        _: char,
         chars: &[char],
     ) -> bool {
-        if opts.comments() && c == '/' && *index < chars.len() {
-            if let Some(next_char) = chars.get(index.saturating_add(1)) {
-                if *next_char == '/' {
-                    for _ in *index..chars.len() {
-                        self.highlighting.push(highlighting::Type::Comment);
-                        *index += 1;
-                    }
-                    return true;
+        if let Some(comment_delim) = opts.comments() {
+            for (i, d) in comment_delim.chars().enumerate() {
+                if *index + i >= chars.len() || chars[*index + i] != d {
+                    return false;
                 }
             }
+
+            for _ in *index..chars.len() {
+                self.highlighting.push(highlighting::Type::Comment);
+                *index += 1;
+            }
+            return true;
         }
 
         false
@@ -329,7 +331,7 @@ impl Row {
         c: char,
         chars: &[char],
     ) -> bool {
-        if opts.comments() && c == '/' && *index < chars.len() {
+        if opts.multiline_comments() && c == '/' && *index < chars.len() {
             if let Some(next_char) = chars.get(index.saturating_add(1)) {
                 if *next_char == '*' {
                     let closing_index =
