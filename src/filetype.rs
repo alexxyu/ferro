@@ -109,7 +109,7 @@ impl FileType {
                         "yield".to_string(),
                         "async".to_string(),
                         "await".to_string(),
-                        "try".to_string(), 
+                        "try".to_string(),
                     ],
                     secondary_keywords: vec![
                         "bool".to_string(),
@@ -125,7 +125,7 @@ impl FileType {
                         "u64".to_string(),
                         "usize".to_string(),
                         "f32".to_string(),
-                        "f64".to_string(), 
+                        "f64".to_string(),
                     ],
                 },
             };

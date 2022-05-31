@@ -34,7 +34,7 @@ impl Row {
                         .highlighting
                         .get(index)
                         .unwrap_or(&highlighting::Type::None);
-                        
+
                     if highlighting_type != current_highlighting {
                         current_highlighting = highlighting_type;
                         let start_highlight =
@@ -413,7 +413,7 @@ impl Row {
                     break;
                 }
             }
-            
+
             true
         } else {
             false

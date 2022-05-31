@@ -29,7 +29,7 @@ impl Document {
     }
 
     /// # Errors
-    /// 
+    ///
     /// Will return `Err` if I/O error encountered while attempting to read file
     /// specified by `filename`
     pub fn open(filename: &str) -> Result<Self, std::io::Error> {
@@ -80,7 +80,7 @@ impl Document {
         if at.y > self.rows.len() {
             return;
         }
-        
+
         if at.y == self.rows.len() {
             self.rows.push(Row::default());
         } else {
@@ -89,7 +89,7 @@ impl Document {
             self.rows.insert(at.y + 1, new_row);
         }
     }
-    
+
     pub fn insert(&mut self, at: &mut Position, c: char) {
         if at.y > self.rows.len() {
             return;
@@ -121,7 +121,7 @@ impl Document {
             row.is_highlighted = false;
         }
     }
-    
+
     pub fn delete(&mut self, at: &Position) {
         let len = self.rows.len();
         if at.y >= len {

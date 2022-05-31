@@ -55,9 +55,9 @@ pub struct Editor {
 impl Editor {
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
-        let mut initial_status = 
+        let mut initial_status =
             String::from("HELP: Ctrl-L = look for | Ctrl-S = save | Ctrl-X = quit");
-        
+
         let document = if let Some(filename) = args.get(1) {
             if let Ok(doc) = Document::open(filename) {
                 doc
@@ -69,7 +69,7 @@ impl Editor {
             Document::default()
         };
 
-        Editor { 
+        Editor {
             should_quit: false,
             terminal: Terminal::default().expect("Failed to initialize terminal"),
             document,
@@ -133,7 +133,7 @@ impl Editor {
         } else {
             ""
         };
-        
+
         if let Some(name) = &self.document.filename {
             filename = name.clone();
             filename.truncate(20);
@@ -145,7 +145,7 @@ impl Editor {
             self.document.len(),
             modified_indicator
         );
-        
+
         let line_indicator = format!(
             "{} | {}/{}",
             self.document.file_type(),
@@ -234,7 +234,7 @@ impl Editor {
 
         let query = self
             .prompt(
-                "Search (ESC to cancel, Arrows to navigate): ", 
+                "Search (ESC to cancel, Arrows to navigate): ",
                 |editor, key, query| {
                     let mut moved = false;
                     match key {
@@ -247,10 +247,10 @@ impl Editor {
                         _ => (),
                     }
 
-                    if let Some(position) = 
+                    if let Some(position) =
                         editor
                             .document
-                            .find(&query, &editor.cursor_position, direction) 
+                            .find(&query, &editor.cursor_position, direction)
                     {
                         editor.cursor_position = position;
                         editor.scroll();
@@ -349,7 +349,7 @@ impl Editor {
         let height = self.terminal.size().height as usize;
         let width = self.terminal.size().width as usize;
         let mut offset = &mut self.offset;
-        
+
         if y < offset.y {
             offset.y = y;
         } else if y >= offset.y.saturating_add(height) {
