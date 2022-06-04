@@ -6,6 +6,7 @@ pub enum Type {
     Start,
     Number,
     Match,
+    Selection,
     String,
     Character,
     Comment,
@@ -22,6 +23,7 @@ impl Type {
         match self {
             Type::Number => color::AnsiValue::rgb(5, 1, 5),
             Type::Match => color::AnsiValue::rgb(0, 5, 0),
+            Type::Selection => color::AnsiValue::rgb(2, 2, 5),
             Type::String => color::AnsiValue::rgb(5, 2, 2),
             Type::Character => color::AnsiValue::rgb(5, 4, 0),
             Type::Comment | Type::MultilineComment => color::AnsiValue::rgb(3, 3, 3),

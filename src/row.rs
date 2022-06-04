@@ -1,6 +1,7 @@
 use crate::HighlightingOptions;
 use crate::highlighting;
 use crate::SearchDirection;
+use std::vec;
 use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -10,6 +11,7 @@ pub struct Row {
     string: String,
     highlighting: Vec<highlighting::Type>,
     len: usize,
+    selections: Vec<[usize; 2]>,
 }
 
 impl Row {
@@ -124,6 +126,7 @@ impl Row {
             string: splitted_row,
             highlighting: Vec::new(),
             len: splitted_length,
+            selections: Vec::new(),
         }
     }
 
@@ -166,6 +169,57 @@ impl Row {
             }
         }
         None
+    }
+
+    pub fn replace_selections(&mut self, word: &Option<String>) {
+        if self.selections.len() > 0 {
+            // See https://stackoverflow.com/a/64921799
+            let mut selections = std::mem::take(&mut self.selections);
+
+            selections.sort_by(|a,b| a[0].cmp(&b[0]));
+            let mut merged_selections = vec![selections[0].clone()];
+            let mut prev = &mut merged_selections[0];
+
+            for curr in selections[1..].iter_mut() {
+                if curr[0] >= prev[0] && curr[0] <= prev[1] {
+                    prev[1] = curr[1].max(prev[1]);
+                } else {
+                    merged_selections.push(*curr);
+                    prev = curr;
+                }
+            }
+
+            merged_selections
+                .iter()
+                .rev()
+                .for_each(|[at, end]| {
+                    (*at..*end).for_each(|_| { 
+                        self.delete(*at);
+                    });
+
+                    if let Some(word) = word {
+                        word.chars()
+                            .rev()
+                            .for_each(|c| {
+                                self.insert(*at, c);
+                            });
+                    }
+                });
+
+            self.selections = selections;
+            self.is_highlighted = false;
+            self.reset_selections();
+        }
+    }
+
+    pub fn add_selection(&mut self, at: usize, len: usize) {
+        self.selections.push(
+            [at, at.saturating_add(len).min(self.string.len())]
+        );
+    }
+
+    pub fn reset_selections(&mut self) {
+        self.selections.clear();
     }
 
     pub fn highlight_str(
@@ -271,6 +325,14 @@ impl Row {
                 } else {
                     break;
                 }
+            }
+        }
+    }
+
+    fn highlight_selection(&mut self) {
+        for [at, end] in self.selections.iter() {
+            for i in *at..*end {
+                self.highlighting[i] = highlighting::Type::Selection;
             }
         }
     }
@@ -468,6 +530,7 @@ impl Row {
         }
 
         self.highlight_match(word);
+        self.highlight_selection();
 
         if in_multiline_comment && &self.string[self.string.len().saturating_sub(2)..] != "*/" {
             return true;
@@ -508,6 +571,7 @@ impl From<&str> for Row {
             string: String::from(slice),
             highlighting: Vec::new(),
             len: slice.graphemes(true).count(),
+            selections: Vec::new(),
         }
     }
 }

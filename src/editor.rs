@@ -21,7 +21,7 @@ pub enum SearchDirection {
     Backward,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
@@ -234,14 +234,24 @@ impl Editor {
 
         let query = self
             .prompt(
-                "Search (ESC to cancel, Arrows to navigate): ",
+                "Search (ESC to cancel, arrows to navigate, Ctrl+F/Ctrl+B to select): ",
                 |editor, key, query| {
                     let mut moved = false;
                     match key {
+                        Key::Ctrl('f') => {
+                            editor.document.add_selection(editor.cursor_position, query.len());
+                            direction = SearchDirection::Forward;
+                            editor.move_cursor(Key::Right);
+                            moved = true;
+                        },
                         Key::Right | Key::Down => {
                             direction = SearchDirection::Forward;
                             editor.move_cursor(Key::Right);
                             moved = true;
+                        },
+                        Key::Ctrl('b') => {
+                            editor.document.add_selection(editor.cursor_position, query.len());
+                            direction = SearchDirection::Backward;
                         },
                         Key::Left | Key::Up => direction = SearchDirection::Backward,
                         _ => (),
@@ -266,6 +276,7 @@ impl Editor {
             self.scroll();
         }
         self.highlighted_word = None;
+        self.document.refresh_highlighting();
     }
 
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
@@ -325,6 +336,53 @@ impl Editor {
             let key = Terminal::read_key()?;
             match key {
                 Key::Backspace => result.truncate(result.len().saturating_sub(1)),
+                Key::Char('\n') => {
+                    self.document.reset_selections();
+                    result = "\0".to_string();
+                    break;
+                },
+                Key::Char(c) => {
+                    if !c.is_control() {
+                        result.push(c);
+                    }
+                },
+                Key::Ctrl('d') => {
+                    self.document.delete_selections();
+                    result = "\0".to_string();
+                    break;
+                },
+                Key::Ctrl('r') => {
+                    let replacement = self.prompt_replacement()?;
+                    if replacement.is_some() {
+                        self.document.replace_selections(&replacement);
+                    } else {
+                        self.document.reset_selections();
+                    }
+                    result = "\0".to_string();
+                    break;
+                },
+                Key::Esc => {
+                    self.document.reset_selections();
+                    result.truncate(0);
+                    break;
+                }
+                _ => (),
+            }
+            callback(self, key, &result);
+        }
+
+        self.status_message = StatusMessage::from(String::new());
+        if result.is_empty() { Ok(None) } else { Ok(Some(result)) }
+    }
+
+    fn prompt_replacement(&mut self) -> Result<Option<String>, std::io::Error> {
+        let mut result = String::new();
+        loop {
+            self.status_message = StatusMessage::from(format!("Replace with: {}", result));
+            self.refresh_screen()?;
+            let key = Terminal::read_key()?;
+            match key {
+                Key::Backspace => result.truncate(result.len().saturating_sub(1)),
                 Key::Char('\n') => break,
                 Key::Char(c) => {
                     if !c.is_control() {
@@ -334,10 +392,9 @@ impl Editor {
                 Key::Esc => {
                     result.truncate(0);
                     break;
-                }
+                },
                 _ => (),
             }
-            callback(self, key, &result);
         }
 
         self.status_message = StatusMessage::from(String::new());

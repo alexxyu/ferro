@@ -8,5 +8,7 @@ Based on https://www.philippflenker.com/hecto/
 
 * vim-like navigation
 * syntax highlighting
-* forward and backward search
+* incremental forward and backward search
+* search-and-delete / search-and-replace
+* auto-detect the number of spaces used per indent
 * support for UTF-8 text

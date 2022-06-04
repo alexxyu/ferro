@@ -213,6 +213,32 @@ impl Document {
         }
     }
 
+    pub fn refresh_highlighting(&mut self) {
+        self.unhighlight_rows(0);
+        self.highlight(
+            &None,
+            None,
+        );
+    }
+
+    pub fn add_selection(&mut self, at: Position, len: usize) {
+        self.rows[at.y].add_selection(at.x, len);
+    }
+
+    pub fn delete_selections(&mut self) {
+        self.rows.iter_mut().for_each(|row| row.replace_selections(&None));
+        self.dirty = true;
+    }
+
+    pub fn replace_selections(&mut self, replace: &Option<String>) {
+        self.rows.iter_mut().for_each(|row| row.replace_selections(replace));
+        self.dirty = true;
+    }
+
+    pub fn reset_selections(&mut self) {
+        self.rows.iter_mut().for_each(|row| row.reset_selections());
+    }
+
     pub fn row(&self, index: usize) -> Option<&Row> {
         self.rows.get(index)
     }
