@@ -181,7 +181,7 @@ impl Row {
             let mut prev = &mut merged_selections[0];
 
             for curr in selections[1..].iter_mut() {
-                if curr[0] >= prev[0] && curr[0] <= prev[1] {
+                if curr[0] >= prev[0] && curr[0] < prev[1] {
                     prev[1] = curr[1].max(prev[1]);
                 } else {
                     merged_selections.push(*curr);
