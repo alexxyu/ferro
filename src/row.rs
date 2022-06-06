@@ -579,3 +579,73 @@ impl From<&str> for Row {
 fn is_separator(c: char) -> bool {
     c.is_ascii_punctuation() || c.is_ascii_whitespace()
 }
+
+#[cfg(test)]
+mod test {
+    use crate::row::Row;
+    use crate::SearchDirection;
+
+    #[test]
+    fn basics() {
+        let mut row = Row::from("Hello, World!");
+        assert_eq!(row.len(), "Hello, World!".len());
+        assert_eq!(row.find("ello", 0, SearchDirection::Forward), Some(1));
+        assert_eq!(row.find("ello", 2, SearchDirection::Forward), None);
+        assert_eq!(row.find("ello", 8, SearchDirection::Backward), Some(1));
+
+        row = Row::from("    x = 3;");
+        assert_eq!(row.get_leading_spaces(), Some(4));
+
+        row = Row::from("\tx = 3;");
+        assert_eq!(row.get_leading_spaces(), None);
+    }
+
+    #[test]
+    fn edit() {
+        let mut row1 = Row::from("Hello ");
+
+        row1.append(&Row::from("World!"));
+        assert_eq!(row1.string, "Hello World!");
+        
+        row1.insert(0, '!');
+        row1.insert(6, ',');
+        row1.delete(0);
+        assert_eq!(row1.string, "Hello, World!");
+
+        let row2 = row1.split(7);
+        assert_eq!(row1.string, "Hello, ");
+        assert_eq!(row2.string, "World!");
+
+        let row3 = row1.split(7);
+        assert_eq!(row1.len(), 7);
+        assert_eq!(row3.len(), 0);
+        
+        let row4 = row1.split(0);
+        assert_eq!(row1.len(), 0);
+        assert_eq!(row4.len(), 7);
+    }
+
+    #[test]
+    fn select_and_edit() {
+        let mut row = Row::from("Hello, World!");
+
+        row.add_selection(2, 1);
+        row.add_selection(3, 1);
+        row.add_selection(10, 1);
+        row.replace_selections(&Some("1".to_string()));
+        assert_eq!(row.string, "He11o, Wor1d!");
+        
+        row = Row::from("var += pq * xy;");
+        row.add_selection(0, 3);
+        row.add_selection(7, 2);
+        row.add_selection(12, 2);
+        row.replace_selections(&Some("foo".to_string()));
+        assert_eq!(row.string, "foo += foo * foo;");
+        
+        row = Row::from("humuhumuhuma nukunukunukunuku apua");
+        row.add_selection(8, 4);
+        row.add_selection(13, 8);
+        row.replace_selections(&None);
+        assert_eq!(row.string, "humuhumu nukunuku apua");
+    }
+}
