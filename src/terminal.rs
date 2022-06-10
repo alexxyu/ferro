@@ -1,7 +1,7 @@
 use crate::Position;
 use std::io::{self, stdout, Write};
-use termion::event::Key;
-use termion::input::TermRead;
+use termion::event::Event;
+use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};
 
 pub struct Size {
@@ -11,7 +11,7 @@ pub struct Size {
 
 pub struct Terminal {
     size: Size,
-    _stdout: RawTerminal<std::io::Stdout>,
+    _stdout: MouseTerminal<RawTerminal<std::io::Stdout>>,
 }
 
 impl Terminal {
@@ -25,7 +25,7 @@ impl Terminal {
                 width: size.0,
                 height: size.1.saturating_sub(2),
             },
-            _stdout: stdout().into_raw_mode()?,
+            _stdout: MouseTerminal::from(stdout().into_raw_mode()?),
         })
     }
 
@@ -83,10 +83,10 @@ impl Terminal {
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered while reading keypress
-    pub fn read_key() -> Result<Key, std::io::Error> {
+    pub fn read_event() -> Result<Event, std::io::Error> {
         loop {
-            if let Some(key) = io::stdin().lock().keys().next() {
-                return key;
+            if let Some(event) = io::stdin().lock().events().next() {
+                return event;
             }
         }
     }

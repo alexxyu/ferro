@@ -3,7 +3,7 @@ use crate::Row;
 use crate::Terminal;
 
 use std::env;
-use termion::event::Key;
+use termion::event::{Event, Key, MouseEvent};
 use std::time::Duration;
 use std::time::Instant;
 
@@ -91,7 +91,7 @@ impl Editor {
                 break;
             }
 
-            if let Err(error) = self.process_keypress() {
+            if let Err(error) = self.process_event() {
                 die(&error);
             }
         }
@@ -279,9 +279,17 @@ impl Editor {
         self.document.refresh_highlighting();
     }
 
-    fn process_keypress(&mut self) -> Result<(), std::io::Error> {
-        let pressed_key = Terminal::read_key()?;
-        match pressed_key {
+    fn process_event(&mut self) -> Result<(), std::io::Error> {
+        let event = Terminal::read_event()?;
+        match event {
+            Event::Key(keypress)     => self.process_keypress(keypress),
+            Event::Mouse(mousepress) => self.process_mousepress(mousepress),
+            _ => Ok(()),
+        }
+    }
+
+    fn process_keypress(&mut self, keypress: Key) -> Result<(), std::io::Error> {
+        match keypress {
             Key::Ctrl('x') => {
                 if self.quit_times > 0 && self.document.is_dirty() {
                     self.status_message = StatusMessage::from(format!(
@@ -313,7 +321,7 @@ impl Editor {
             | Key::Right
             | Key::Ctrl('b' | 'f' | 'a' | 'e')
             | Key::End
-            | Key::Home => self.move_cursor(pressed_key),
+            | Key::Home => self.move_cursor(keypress),
             _ => (),
         }
 
@@ -325,6 +333,22 @@ impl Editor {
         Ok(())
     }
 
+    fn process_mousepress(&mut self, mousepress: MouseEvent) -> Result<(), std::io::Error> {
+        let offset = &self.offset;
+        match mousepress {
+            MouseEvent::Press(_, a, b)
+            | MouseEvent::Release(a, b)
+            | MouseEvent::Hold(a, b) => {
+                let y = offset.y + b.saturating_sub(1) as usize;
+                if let Some(row) = self.document.row(y) {
+                    let x = (offset.x + a.saturating_sub(1) as usize).min(row.len());
+                    self.cursor_position = Position { x, y };
+                }
+            }
+        };
+        Ok(())
+    }
+
     fn prompt<C>(&mut self, prompt: &str, mut callback: C) -> Result<Option<String>, std::io::Error>
     where
         C: FnMut(&mut Self, Key, &String),
@@ -333,42 +357,44 @@ impl Editor {
         loop {
             self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
             self.refresh_screen()?;
-            let key = Terminal::read_key()?;
-            match key {
-                Key::Backspace => result.truncate(result.len().saturating_sub(1)),
-                Key::Char('\n') => {
-                    self.document.reset_selections();
-                    result = "\0".to_string();
-                    break;
-                },
-                Key::Char(c) => {
-                    if !c.is_control() {
-                        result.push(c);
-                    }
-                },
-                Key::Ctrl('d') => {
-                    self.document.delete_selections();
-                    result = "\0".to_string();
-                    break;
-                },
-                Key::Ctrl('r') => {
-                    let replacement = self.prompt_replacement()?;
-                    if replacement.is_some() {
-                        self.document.replace_selections(&replacement);
-                    } else {
+            let event = Terminal::read_event()?;
+            if let Event::Key(key) = event {
+                match key {
+                    Key::Backspace => result.truncate(result.len().saturating_sub(1)),
+                    Key::Char('\n') => {
                         self.document.reset_selections();
+                        result = "\0".to_string();
+                        break;
+                    },
+                    Key::Char(c) => {
+                        if !c.is_control() {
+                            result.push(c);
+                        }
+                    },
+                    Key::Ctrl('d') => {
+                        self.document.delete_selections();
+                        result = "\0".to_string();
+                        break;
+                    },
+                    Key::Ctrl('r') => {
+                        let replacement = self.prompt_replacement()?;
+                        if replacement.is_some() {
+                            self.document.replace_selections(&replacement);
+                        } else {
+                            self.document.reset_selections();
+                        }
+                        result = "\0".to_string();
+                        break;
+                    },
+                    Key::Esc => {
+                        self.document.reset_selections();
+                        result.truncate(0);
+                        break;
                     }
-                    result = "\0".to_string();
-                    break;
-                },
-                Key::Esc => {
-                    self.document.reset_selections();
-                    result.truncate(0);
-                    break;
+                    _ => (),
                 }
-                _ => (),
+                callback(self, key, &result);
             }
-            callback(self, key, &result);
         }
 
         self.status_message = StatusMessage::from(String::new());
@@ -380,20 +406,22 @@ impl Editor {
         loop {
             self.status_message = StatusMessage::from(format!("Replace with: {}", result));
             self.refresh_screen()?;
-            let key = Terminal::read_key()?;
-            match key {
-                Key::Backspace => result.truncate(result.len().saturating_sub(1)),
-                Key::Char('\n') => break,
-                Key::Char(c) => {
-                    if !c.is_control() {
-                        result.push(c);
-                    }
-                },
-                Key::Esc => {
-                    result.truncate(0);
-                    break;
-                },
-                _ => (),
+            let event = Terminal::read_event()?;
+            if let Event::Key(key) = event {
+                match key {
+                    Key::Backspace => result.truncate(result.len().saturating_sub(1)),
+                    Key::Char('\n') => break,
+                    Key::Char(c) => {
+                        if !c.is_control() {
+                            result.push(c);
+                        }
+                    },
+                    Key::Esc => {
+                        result.truncate(0);
+                        break;
+                    },
+                    _ => (),
+                }
             }
         }
 
