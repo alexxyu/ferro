@@ -3,9 +3,9 @@ use crate::Row;
 use crate::Terminal;
 
 use std::env;
-use termion::event::{Event, Key, MouseEvent};
 use std::time::Duration;
 use std::time::Instant;
+use termion::event::{Event, Key, MouseEvent};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 3;
@@ -109,7 +109,7 @@ impl Editor {
                 Some(
                     self.offset
                         .y
-                        .saturating_add(self.terminal.size().height as usize)
+                        .saturating_add(self.terminal.size().height as usize),
                 ),
             );
 
@@ -213,7 +213,7 @@ impl Editor {
 
     fn save(&mut self) {
         if self.document.filename.is_none() {
-            let new_name = self.prompt("Save as: ", |_,_,_| {}).unwrap_or(None);
+            let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
             if new_name.is_none() {
                 self.status_message = StatusMessage::from("Save aborted.".to_string());
                 return;
@@ -239,20 +239,24 @@ impl Editor {
                     let mut moved = false;
                     match key {
                         Key::Ctrl('f') => {
-                            editor.document.add_selection(editor.cursor_position, query.len());
+                            editor
+                                .document
+                                .add_selection(editor.cursor_position, query.len());
                             direction = SearchDirection::Forward;
                             editor.move_cursor(Key::Right);
                             moved = true;
-                        },
+                        }
                         Key::Right | Key::Down => {
                             direction = SearchDirection::Forward;
                             editor.move_cursor(Key::Right);
                             moved = true;
-                        },
+                        }
                         Key::Ctrl('b') => {
-                            editor.document.add_selection(editor.cursor_position, query.len());
+                            editor
+                                .document
+                                .add_selection(editor.cursor_position, query.len());
                             direction = SearchDirection::Backward;
-                        },
+                        }
                         Key::Left | Key::Up => direction = SearchDirection::Backward,
                         _ => (),
                     }
@@ -268,7 +272,8 @@ impl Editor {
                         editor.move_cursor(Key::Left);
                     }
                     editor.highlighted_word = Some(query.to_string());
-            })
+                },
+            )
             .unwrap_or(None);
 
         if query.is_none() {
@@ -282,7 +287,7 @@ impl Editor {
     fn process_event(&mut self) -> Result<(), std::io::Error> {
         let event = Terminal::read_event()?;
         match event {
-            Event::Key(keypress)     => self.process_keypress(keypress),
+            Event::Key(keypress) => self.process_keypress(keypress),
             Event::Mouse(mousepress) => self.process_mousepress(mousepress),
             _ => Ok(()),
         }
@@ -297,24 +302,24 @@ impl Editor {
                         self.quit_times
                     ));
                     self.quit_times -= 1;
-                    return Ok(())
+                    return Ok(());
                 }
 
                 self.should_quit = true;
-            },
+            }
             Key::Ctrl('s') => self.save(),
             Key::Ctrl('l') => self.search(),
             Key::Char(c) => {
                 self.document.insert(&mut self.cursor_position, c);
                 self.move_cursor(Key::Right);
-            },
+            }
             Key::Delete => self.document.delete(&self.cursor_position),
             Key::Backspace => {
                 if self.cursor_position.x > 0 || self.cursor_position.y > 0 {
                     self.move_cursor(Key::Left);
                     self.document.delete(&self.cursor_position);
                 }
-            },
+            }
             Key::Up
             | Key::Down
             | Key::Left
@@ -336,9 +341,7 @@ impl Editor {
     fn process_mousepress(&mut self, mousepress: MouseEvent) -> Result<(), std::io::Error> {
         let offset = &self.offset;
         match mousepress {
-            MouseEvent::Press(_, a, b)
-            | MouseEvent::Release(a, b)
-            | MouseEvent::Hold(a, b) => {
+            MouseEvent::Press(_, a, b) | MouseEvent::Release(a, b) | MouseEvent::Hold(a, b) => {
                 let y = offset.y + b.saturating_sub(1) as usize;
                 if let Some(row) = self.document.row(y) {
                     let x = (offset.x + a.saturating_sub(1) as usize).min(row.len());
@@ -365,17 +368,17 @@ impl Editor {
                         self.document.reset_selections();
                         result = "\0".to_string();
                         break;
-                    },
+                    }
                     Key::Char(c) => {
                         if !c.is_control() {
                             result.push(c);
                         }
-                    },
+                    }
                     Key::Ctrl('d') => {
                         self.document.delete_selections();
                         result = "\0".to_string();
                         break;
-                    },
+                    }
                     Key::Ctrl('r') => {
                         let replacement = self.prompt_replacement()?;
                         if replacement.is_some() {
@@ -385,7 +388,7 @@ impl Editor {
                         }
                         result = "\0".to_string();
                         break;
-                    },
+                    }
                     Key::Esc => {
                         self.document.reset_selections();
                         result.truncate(0);
@@ -398,7 +401,11 @@ impl Editor {
         }
 
         self.status_message = StatusMessage::from(String::new());
-        if result.is_empty() { Ok(None) } else { Ok(Some(result)) }
+        if result.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(result))
+        }
     }
 
     fn prompt_replacement(&mut self) -> Result<Option<String>, std::io::Error> {
@@ -415,18 +422,22 @@ impl Editor {
                         if !c.is_control() {
                             result.push(c);
                         }
-                    },
+                    }
                     Key::Esc => {
                         result.truncate(0);
                         break;
-                    },
+                    }
                     _ => (),
                 }
             }
         }
 
         self.status_message = StatusMessage::from(String::new());
-        if result.is_empty() { Ok(None) } else { Ok(Some(result)) }
+        if result.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(result))
+        }
     }
 
     fn scroll(&mut self) {
@@ -460,13 +471,13 @@ impl Editor {
         };
 
         match key {
-            Key::Up        => y = y.saturating_sub(1),
-            Key::Down      => {
+            Key::Up => y = y.saturating_sub(1),
+            Key::Down => {
                 if y < height {
                     y = y.saturating_add(1);
                 }
             }
-            Key::Left      => {
+            Key::Left => {
                 if x > 0 {
                     x -= 1;
                 } else if y > 0 {
@@ -477,22 +488,22 @@ impl Editor {
                         x = 0;
                     }
                 }
-            },
-            Key::Right     => {
+            }
+            Key::Right => {
                 if x < width {
                     x += 1;
                 } else if y < height {
                     y += 1;
                     x = 0;
                 }
-            },
+            }
             Key::Ctrl('b') => y = y.saturating_sub(terminal_height),
             Key::Ctrl('f') => y = y.saturating_add(terminal_height).min(height),
             Key::Ctrl('a') => x = 0,
             Key::Ctrl('e') => x = width,
-            Key::Home      => y = 0,
-            Key::End       => y = height,
-            _              => (),
+            Key::Home => y = 0,
+            Key::End => y = height,
+            _ => (),
         }
 
         width = if let Some(row) = self.document.row(y) {

@@ -1,5 +1,5 @@
-use crate::HighlightingOptions;
 use crate::highlighting;
+use crate::HighlightingOptions;
 use crate::SearchDirection;
 use std::vec;
 use termion::color;
@@ -16,7 +16,9 @@ pub struct Row {
 
 impl Row {
     pub fn replace_tabs_with_spaces(&mut self, spaces_per_tab: usize) {
-        self.string = self.string.replace("\t", " ".repeat(spaces_per_tab).as_str());
+        self.string = self
+            .string
+            .replace("\t", " ".repeat(spaces_per_tab).as_str());
     }
 
     pub fn render(&self, start: usize, end: usize) -> String {
@@ -176,7 +178,7 @@ impl Row {
             // See https://stackoverflow.com/a/64921799
             let mut selections = std::mem::take(&mut self.selections);
 
-            selections.sort_by(|a,b| a[0].cmp(&b[0]));
+            selections.sort_by(|a, b| a[0].cmp(&b[0]));
             let mut merged_selections = vec![selections[0].clone()];
             let mut prev = &mut merged_selections[0];
 
@@ -189,22 +191,17 @@ impl Row {
                 }
             }
 
-            merged_selections
-                .iter()
-                .rev()
-                .for_each(|[at, end]| {
-                    (*at..*end).for_each(|_| { 
-                        self.delete(*at);
-                    });
-
-                    if let Some(word) = word {
-                        word.chars()
-                            .rev()
-                            .for_each(|c| {
-                                self.insert(*at, c);
-                            });
-                    }
+            merged_selections.iter().rev().for_each(|[at, end]| {
+                (*at..*end).for_each(|_| {
+                    self.delete(*at);
                 });
+
+                if let Some(word) = word {
+                    word.chars().rev().for_each(|c| {
+                        self.insert(*at, c);
+                    });
+                }
+            });
 
             self.selections = selections;
             self.is_highlighted = false;
@@ -213,9 +210,8 @@ impl Row {
     }
 
     pub fn add_selection(&mut self, at: usize, len: usize) {
-        self.selections.push(
-            [at, at.saturating_add(len).min(self.string.len())]
-        );
+        self.selections
+            .push([at, at.saturating_add(len).min(self.string.len())]);
     }
 
     pub fn reset_selections(&mut self) {
@@ -227,7 +223,7 @@ impl Row {
         index: &mut usize,
         substring: &str,
         chars: &[char],
-        hl_type: highlighting::Type
+        hl_type: highlighting::Type,
     ) -> bool {
         if substring.is_empty() {
             return false;
@@ -256,7 +252,7 @@ impl Row {
         index: &mut usize,
         chars: &[char],
         keywords: &[String],
-        hl_type: highlighting::Type
+        hl_type: highlighting::Type,
     ) -> bool {
         if *index > 0 {
             let prev_char = chars[*index - 1];
@@ -317,7 +313,8 @@ impl Row {
 
             let mut index = 0;
             while let Some(search_match) = self.find(word, index, SearchDirection::Forward) {
-                if let Some(next_index) = search_match.checked_add(word[..].graphemes(true).count()) {
+                if let Some(next_index) = search_match.checked_add(word[..].graphemes(true).count())
+                {
                     for i in search_match..next_index {
                         self.highlighting[i] = highlighting::Type::Match;
                     }
@@ -560,7 +557,11 @@ impl Row {
             index += 1;
         }
 
-        return if index == self.string.len() || index == 0 { None } else { Some(index) };
+        return if index == self.string.len() || index == 0 {
+            None
+        } else {
+            Some(index)
+        };
     }
 }
 
@@ -606,7 +607,7 @@ mod test {
 
         row1.append(&Row::from("World!"));
         assert_eq!(row1.string, "Hello World!");
-        
+
         row1.insert(0, '!');
         row1.insert(6, ',');
         row1.delete(0);
@@ -619,7 +620,7 @@ mod test {
         let row3 = row1.split(7);
         assert_eq!(row1.len(), 7);
         assert_eq!(row3.len(), 0);
-        
+
         let row4 = row1.split(0);
         assert_eq!(row1.len(), 0);
         assert_eq!(row4.len(), 7);
@@ -634,14 +635,14 @@ mod test {
         row.add_selection(10, 1);
         row.replace_selections(&Some("1".to_string()));
         assert_eq!(row.string, "He11o, Wor1d!");
-        
+
         row = Row::from("var += pq * xy;");
         row.add_selection(0, 3);
         row.add_selection(7, 2);
         row.add_selection(12, 2);
         row.replace_selections(&Some("foo".to_string()));
         assert_eq!(row.string, "foo += foo * foo;");
-        
+
         row = Row::from("humuhumuhuma nukunukunukunuku apua");
         row.add_selection(8, 4);
         row.add_selection(13, 8);

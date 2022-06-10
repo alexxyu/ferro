@@ -41,7 +41,13 @@ impl Type {
             Type::Comment | Type::MultilineComment => color::AnsiValue::rgb(3, 3, 3),
             Type::PrimaryKeywords => color::AnsiValue::rgb(0, 4, 5),
             Type::SecondaryKeywords => color::AnsiValue::rgb(0, 5, 4),
-            _ => if *SHOULD_USE_DARK_THEME { color::AnsiValue::rgb(5, 5, 5) } else { color::AnsiValue::rgb(0, 0, 0) },
+            _ => {
+                if *SHOULD_USE_DARK_THEME {
+                    color::AnsiValue::rgb(5, 5, 5)
+                } else {
+                    color::AnsiValue::rgb(0, 0, 0)
+                }
+            }
         }
     }
 }

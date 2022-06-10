@@ -36,10 +36,7 @@ impl Document {
         let contents = fs::read_to_string(filename)?;
         let file_type = FileType::from(filename);
 
-        let mut rows: Vec<Row> = contents
-            .lines()
-            .map(Row::from)
-            .collect();
+        let mut rows: Vec<Row> = contents.lines().map(Row::from).collect();
 
         let spaces_per_tab = Self::calculate_indent(&rows);
         for row in rows.iter_mut() {
@@ -187,7 +184,7 @@ impl Document {
                     position.x = self.rows[position.y].len();
                 }
             } else {
-               return None;
+                return None;
             }
         }
         None
@@ -215,10 +212,7 @@ impl Document {
 
     pub fn refresh_highlighting(&mut self) {
         self.unhighlight_rows(0);
-        self.highlight(
-            &None,
-            None,
-        );
+        self.highlight(&None, None);
     }
 
     pub fn add_selection(&mut self, at: Position, len: usize) {
@@ -226,12 +220,16 @@ impl Document {
     }
 
     pub fn delete_selections(&mut self) {
-        self.rows.iter_mut().for_each(|row| row.replace_selections(&None));
+        self.rows
+            .iter_mut()
+            .for_each(|row| row.replace_selections(&None));
         self.dirty = true;
     }
 
     pub fn replace_selections(&mut self, replace: &Option<String>) {
-        self.rows.iter_mut().for_each(|row| row.replace_selections(replace));
+        self.rows
+            .iter_mut()
+            .for_each(|row| row.replace_selections(replace));
         self.dirty = true;
     }
 
