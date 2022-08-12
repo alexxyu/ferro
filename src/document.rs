@@ -257,3 +257,39 @@ impl Document {
         self.file_type.name()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{Document, Position, Row};
+
+    #[test]
+    fn editing() {
+        let mut doc = Document::default();
+        let input = "Hello, World!";
+        let split_idx = 7;
+
+        let mut pos = Position { x: 0, y: 0 };
+        for c in input.chars() {
+            doc.insert(&mut pos, c);
+            pos.x += 1;
+        }
+
+        let row_to_string = |row: &Row| String::from_utf8_lossy(row.as_bytes()).to_string();
+
+        assert_eq!(doc.rows.len(), 1);
+        assert_eq!(row_to_string(&doc.rows[0]), input);
+        assert_eq!(pos.x, input.len());
+        assert_eq!(pos.y, 0);
+
+        let (a, b) = input.split_at(split_idx);
+        doc.insert(&mut Position { x: split_idx, y: 0 }, '\n');
+        assert_eq!(doc.rows.len(), 2);
+        assert_eq!(row_to_string(&doc.rows[0]), a);
+        assert_eq!(row_to_string(&doc.rows[1]), b);
+
+        doc.insert(&mut Position { x: b.len(), y: 1 }, '\n');
+        assert_eq!(doc.rows.len(), 3);
+        assert_eq!(row_to_string(&doc.rows[1]), b);
+        assert_eq!(row_to_string(&doc.rows[2]), "");
+    }
+}
