@@ -1,4 +1,4 @@
-name: test
+name: Build hecto
 
 on:
   push:
@@ -11,12 +11,10 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: cargo build --verbose
