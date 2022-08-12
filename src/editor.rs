@@ -46,6 +46,7 @@ pub struct Editor {
     terminal: Terminal,
     cursor_position: Position,
     offset: Position,
+    max_position: Option<Position>,
     document: Document,
     status_message: StatusMessage,
     quit_times: u8,
@@ -75,6 +76,7 @@ impl Editor {
             document,
             offset: Position::default(),
             cursor_position: Position::default(),
+            max_position: None,
             status_message: StatusMessage::from(initial_status),
             quit_times: QUIT_TIMES,
             highlighted_word: None,
@@ -346,6 +348,7 @@ impl Editor {
                 if let Some(row) = self.document.row(y) {
                     let x = (offset.x + a.saturating_sub(1) as usize).min(row.len());
                     self.cursor_position = Position { x, y };
+                    self.max_position = Some(Position { x, y });
                 }
             }
         };
@@ -511,8 +514,31 @@ impl Editor {
         } else {
             0
         };
-        x = x.min(width);
+
+        let is_vertical_control = |k: Key| {
+            match k {
+                Key::Up | Key::Down | Key::Ctrl('f') | Key::Ctrl('b') | Key::Home | Key::End => true,
+                _ => false
+            }
+        };
+        let is_horizontal_control = |k: Key| {
+            match k {
+                Key::Left | Key::Right | Key::Ctrl('a') | Key::Ctrl('e') => true,
+                _ => false
+            }
+        };
+
+        if !is_vertical_control(key) || self.max_position.is_none() {
+            x = x.min(width);
+        } else if let Some(pos) = self.max_position {
+            x = x.max(pos.x).min(width);
+        }
 
         self.cursor_position = Position { x, y };
+
+        if is_horizontal_control(key) {
+            // We need to update the cursor's max_position iff the keypress controls the cursor's x position
+            self.max_position = Some(Position { x, y });
+        }
     }
 }
