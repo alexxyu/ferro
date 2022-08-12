@@ -46,6 +46,7 @@ pub struct Editor {
     terminal: Terminal,
     cursor_position: Position,
     offset: Position,
+    max_position: Option<Position>,
     document: Document,
     status_message: StatusMessage,
     quit_times: u8,
@@ -75,6 +76,7 @@ impl Editor {
             document,
             offset: Position::default(),
             cursor_position: Position::default(),
+            max_position: None,
             status_message: StatusMessage::from(initial_status),
             quit_times: QUIT_TIMES,
             highlighted_word: None,
@@ -346,6 +348,7 @@ impl Editor {
                 if let Some(row) = self.document.row(y) {
                     let x = (offset.x + a.saturating_sub(1) as usize).min(row.len());
                     self.cursor_position = Position { x, y };
+                    self.max_position = Some(Position { x, y });
                 }
             }
         };
@@ -511,8 +514,18 @@ impl Editor {
         } else {
             0
         };
-        x = x.min(width);
+
+        if (key != Key::Down && key != Key::Up) || self.max_position.is_none() {
+            x = x.min(width);
+        } else if let Some(pos) = self.max_position {
+            x = x.max(pos.x).min(width);
+        }
 
         self.cursor_position = Position { x, y };
+
+        if key == Key::Left || key == Key::Right {
+            // If x position has changed, we need to update the max_position
+            self.max_position = Some(Position { x, y });
+        }
     }
 }
