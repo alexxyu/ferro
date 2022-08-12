@@ -36,9 +36,6 @@ jobs:
         id: coverage
         uses: actions-rs/grcov@v0.1
 
-      - name: Output ccreport
-        run: cat ${{ steps.coverage.outputs.report }}
-
       - name: Upload to codecov
         uses: codecov/codecov-action@v3
         with:
