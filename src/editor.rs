@@ -515,7 +515,20 @@ impl Editor {
             0
         };
 
-        if (key != Key::Down && key != Key::Up) || self.max_position.is_none() {
+        let is_vertical_control = |k: Key| {
+            match k {
+                Key::Up | Key::Down | Key::Ctrl('f') | Key::Ctrl('b') | Key::Home | Key::End => true,
+                _ => false
+            }
+        };
+        let is_horizontal_control = |k: Key| {
+            match k {
+                Key::Left | Key::Right | Key::Ctrl('a') | Key::Ctrl('e') => true,
+                _ => false
+            }
+        };
+
+        if !is_vertical_control(key) || self.max_position.is_none() {
             x = x.min(width);
         } else if let Some(pos) = self.max_position {
             x = x.max(pos.x).min(width);
@@ -523,8 +536,8 @@ impl Editor {
 
         self.cursor_position = Position { x, y };
 
-        if key == Key::Left || key == Key::Right {
-            // If x position has changed, we need to update the max_position
+        if is_horizontal_control(key) {
+            // We need to update the cursor's max_position iff the keypress controls the cursor's x position
             self.max_position = Some(Position { x, y });
         }
     }
