@@ -260,10 +260,15 @@ impl Document {
 
 #[cfg(test)]
 mod test {
-    use crate::{Document, Position, Row};
+    use std::{env, fs, path::PathBuf};
+    use crate::{Document, Position, Row, SearchDirection};
+
+    fn row_to_string(row: &Row) -> String {
+        String::from_utf8_lossy(row.as_bytes()).to_string()
+    } 
 
     #[test]
-    fn editing() {
+    fn edit() {
         let mut doc = Document::default();
         let input = "Hello, World!";
         let split_idx = 7;
@@ -273,8 +278,6 @@ mod test {
             doc.insert(&mut pos, c);
             pos.x += 1;
         }
-
-        let row_to_string = |row: &Row| String::from_utf8_lossy(row.as_bytes()).to_string();
 
         assert_eq!(doc.rows.len(), 1);
         assert_eq!(row_to_string(&doc.rows[0]), input);
@@ -291,5 +294,48 @@ mod test {
         assert_eq!(doc.rows.len(), 3);
         assert_eq!(row_to_string(&doc.rows[1]), b);
         assert_eq!(row_to_string(&doc.rows[2]), "");
+    }
+
+    #[test]
+    fn find_and_select() {
+        let path: PathBuf = [
+            env::var("CARGO_MANIFEST_DIR").unwrap().as_str(),
+            "resources",
+            "tests",
+            "test_file.txt"].iter().collect();
+        let mut doc = Document::open(path.to_str().unwrap()).unwrap();
+        let text = fs::read_to_string(path).unwrap();
+
+        let query = "John Doe";
+        let text_matches = text.matches(query).count();
+
+        let mut doc_matches = 0;
+        let mut position = Position { x: 0, y: 0 };
+        while let Some(next_position) = doc.find(query, &position, SearchDirection::Forward) {
+            if position.x == next_position.x && position.y == next_position.y {
+                break;
+            }
+
+            doc.add_selection(next_position, query.len());
+            position.x = next_position.x + 1;
+            position.y = next_position.y;
+            doc_matches += 1;
+        }
+        doc.delete_selections();
+
+        let text_after_delete: String = text.replace(query, "")
+            .split_ascii_whitespace()
+            .collect();
+        let doc_after_delete: String = doc.rows
+            .iter()
+            .map(|r| row_to_string(r))
+            .collect::<Vec<String>>()
+            .join("\n")
+            .split_ascii_whitespace()
+            .collect();
+
+        assert_eq!(text_matches, doc_matches);
+        assert!(doc.find(query, &Position { x: 0, y: 0 }, SearchDirection::Forward).is_none());
+        assert_eq!(text_after_delete, doc_after_delete);
     }
 }
