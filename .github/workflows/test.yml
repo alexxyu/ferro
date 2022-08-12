@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Rust
+      - name: Setup Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
@@ -32,5 +32,15 @@ jobs:
           RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
           RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
 
-      - name: Provide code coverage
+      - name: Generate code coverage report
+        id: coverage
         uses: actions-rs/grcov@v0.1
+
+      - name: Output ccreport
+        run: cat ${{ steps.coverage.outputs.report }}
+
+      - name: Upload to codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ${{ steps.coverage.outputs.report }}
+          verbose: true
