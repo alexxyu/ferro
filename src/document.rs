@@ -257,3 +257,85 @@ impl Document {
         self.file_type.name()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::{env, fs, path::PathBuf};
+    use crate::{Document, Position, Row, SearchDirection};
+
+    fn row_to_string(row: &Row) -> String {
+        String::from_utf8_lossy(row.as_bytes()).to_string()
+    } 
+
+    #[test]
+    fn edit() {
+        let mut doc = Document::default();
+        let input = "Hello, World!";
+        let split_idx = 7;
+
+        let mut pos = Position { x: 0, y: 0 };
+        for c in input.chars() {
+            doc.insert(&mut pos, c);
+            pos.x += 1;
+        }
+
+        assert_eq!(doc.rows.len(), 1);
+        assert_eq!(row_to_string(&doc.rows[0]), input);
+        assert_eq!(pos.x, input.len());
+        assert_eq!(pos.y, 0);
+
+        let (a, b) = input.split_at(split_idx);
+        doc.insert(&mut Position { x: split_idx, y: 0 }, '\n');
+        assert_eq!(doc.rows.len(), 2);
+        assert_eq!(row_to_string(&doc.rows[0]), a);
+        assert_eq!(row_to_string(&doc.rows[1]), b);
+
+        doc.insert(&mut Position { x: b.len(), y: 1 }, '\n');
+        assert_eq!(doc.rows.len(), 3);
+        assert_eq!(row_to_string(&doc.rows[1]), b);
+        assert_eq!(row_to_string(&doc.rows[2]), "");
+    }
+
+    #[test]
+    fn find_and_select() {
+        let path: PathBuf = [
+            env::var("CARGO_MANIFEST_DIR").unwrap().as_str(),
+            "resources",
+            "tests",
+            "test_file.txt"].iter().collect();
+        let mut doc = Document::open(path.to_str().unwrap()).unwrap();
+        let text = fs::read_to_string(path).unwrap();
+
+        let query = "John Doe";
+        let text_matches = text.matches(query).count();
+
+        let mut doc_matches = 0;
+        let mut position = Position { x: 0, y: 0 };
+        while let Some(next_position) = doc.find(query, &position, SearchDirection::Forward) {
+            if position.x == next_position.x && position.y == next_position.y {
+                break;
+            }
+
+            doc.add_selection(next_position, query.len());
+            position.x = next_position.x + 1;
+            position.y = next_position.y;
+            doc_matches += 1;
+        }
+        doc.delete_selections();
+
+        let text_after_delete: String = text.replace(query, "")
+            .split_ascii_whitespace()
+            .collect();
+        let doc_after_delete: String = doc.rows
+            .iter()
+            .map(|r| row_to_string(r))
+            .collect::<Vec<String>>()
+            .join("\n")
+            .split_ascii_whitespace()
+            .collect();
+
+        assert_eq!(text_matches, doc_matches);
+        assert!(doc.find(query, &Position { x: 0, y: 0 }, SearchDirection::Forward).is_none());
+        assert_eq!(text_after_delete, doc_after_delete);
+    }
+}
