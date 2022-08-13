@@ -283,7 +283,7 @@ impl Row {
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `substring` - the string to highlight
     /// * `chars` - the characters in the row
-    /// * `hl_type` - the specific highlighting [type](highlighting::Type) to use
+    /// * `hl_type` - the specific highlighting type to use
     pub fn highlight_str(
         &mut self,
         index: &mut usize,
@@ -320,7 +320,7 @@ impl Row {
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `chars` - the characters in the row
     /// * `keywords` - the keywords that should be highlighted
-    /// * `hl_type` - the specific highlighting [type](highlighting::Type) to use
+    /// * `hl_type` - the specific highlighting type to use
     pub fn highlight_keywords(
         &mut self,
         index: &mut usize,
