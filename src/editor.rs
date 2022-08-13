@@ -46,7 +46,7 @@ pub struct Editor {
     terminal: Terminal,
     cursor_position: Position,
     offset: Position,
-    max_position: Option<Position>,
+    max_position: Option<usize>,
     document: Document,
     status_message: StatusMessage,
     quit_times: u8,
@@ -348,7 +348,7 @@ impl Editor {
                 if let Some(row) = self.document.row(y) {
                     let x = (offset.x + a.saturating_sub(1) as usize).min(row.len());
                     self.cursor_position = Position { x, y };
-                    self.max_position = Some(Position { x, y });
+                    self.max_position = Some(x);
                 }
             }
         };
@@ -531,14 +531,14 @@ impl Editor {
         if !is_vertical_control(key) || self.max_position.is_none() {
             x = x.min(width);
         } else if let Some(pos) = self.max_position {
-            x = x.max(pos.x).min(width);
+            x = x.max(pos).min(width);
         }
 
         self.cursor_position = Position { x, y };
 
         if is_horizontal_control(key) {
             // We need to update the cursor's max_position iff the keypress controls the cursor's x position
-            self.max_position = Some(Position { x, y });
+            self.max_position = Some(x);
         }
     }
 }
