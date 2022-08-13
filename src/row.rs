@@ -8,15 +8,15 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Represents a row of text within the document.
 #[derive(Default)]
 pub struct Row {
-    /// Whether the row should be highlighted.
+    /// Whether the row should be highlighted
     pub is_highlighted: bool,
-    /// The content contained in the row.
+    /// The content contained in the row
     string: String,
-    /// The highlight of each grapheme in the row.
+    /// The highlight of each grapheme in the row
     highlighting: Vec<highlighting::Type>,
-    /// The length of the row's content.
+    /// The length of the row's content
     len: usize,
-    /// A list of tuples (start, len) of selections made in the row.
+    /// A list of tuples (start, len) of selections made in the row
     selections: Vec<[usize; 2]>,
 }
 
