@@ -5,22 +5,39 @@ use std::vec;
 use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
 
+/// Represents a row of text within the document.
 #[derive(Default)]
 pub struct Row {
+    /// Whether the row should be highlighted
     pub is_highlighted: bool,
+    /// The content contained in the row
     string: String,
+    /// The highlight of each grapheme in the row
     highlighting: Vec<highlighting::Type>,
+    /// The length of the row's content
     len: usize,
+    /// A list of tuples (start, len) of selections made in the row
     selections: Vec<[usize; 2]>,
 }
 
 impl Row {
+    /// Replaces all tabs in the row with spaces.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `spaces_per_tab` - the number of spaces each tab is replaced iwth
     pub fn replace_tabs_with_spaces(&mut self, spaces_per_tab: usize) {
         self.string = self
             .string
             .replace("\t", " ".repeat(spaces_per_tab).as_str());
     }
 
+    /// Renders the row, both the string content of the row and any highlighting.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `start` - the index to start rendering from
+    /// * `end` - the index to stop rendering at
     pub fn render(&self, start: usize, end: usize) -> String {
         let end = end.min(self.string.len());
         let start = start.min(end);
@@ -59,6 +76,12 @@ impl Row {
         result
     }
 
+    /// Inserts a character at the given position in the row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the position to insert the character at
+    /// * `c` - the character to insert
     pub fn insert(&mut self, at: usize, c: char) {
         if at >= self.len() {
             self.string.push(c);
@@ -82,11 +105,21 @@ impl Row {
         self.len = length;
     }
 
+    /// Appends another row to the current row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `other` - the row to append to this row
     pub fn append(&mut self, other: &Self) {
         self.string = format!("{}{}", self.string, other.string);
         self.len += other.len;
     }
 
+    /// Deletes the character at the given position in the row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the position of the character in the row to delete
     pub fn delete(&mut self, at: usize) {
         if at < self.len() {
             let mut result: String = String::new();
@@ -104,6 +137,12 @@ impl Row {
         }
     }
 
+    /// Splits the row into two halves. Afterward, the current row contains the first half while 
+    /// the returned row contains the second half.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the index in the row to split at
     pub fn split(&mut self, at: usize) -> Self {
         let mut row: String = String::new();
         let mut length = 0;
@@ -132,6 +171,13 @@ impl Row {
         }
     }
 
+    /// Finds the index of a string within the row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `query` - the string to find
+    /// * `at` - the index to start finding from
+    /// * `direction` - the [SearchDirection] to use
     pub fn find(&self, query: &str, at: usize, direction: SearchDirection) -> Option<usize> {
         if at > self.len || query.is_empty() {
             return None;
@@ -173,6 +219,11 @@ impl Row {
         None
     }
 
+    /// Replaces all selections made in the row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `replace` - the string to replace the selections with
     pub fn replace_selections(&mut self, word: &Option<String>) {
         if self.selections.len() > 0 {
             // See https://stackoverflow.com/a/64921799
@@ -209,15 +260,30 @@ impl Row {
         }
     }
 
+    /// Adds a selection in this row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the index of the selection in this row
+    /// * `len` - the length of the selection
     pub fn add_selection(&mut self, at: usize, len: usize) {
         self.selections
             .push([at, at.saturating_add(len).min(self.string.len())]);
     }
 
+    /// Resets all selections made in the row.
     pub fn reset_selections(&mut self) {
         self.selections.clear();
     }
 
+    /// Checks whether there is a string match in the row to highlight.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `substring` - the string to highlight
+    /// * `chars` - the characters in the row
+    /// * `hl_type` - the specific highlighting type to use
     pub fn highlight_str(
         &mut self,
         index: &mut usize,
@@ -247,6 +313,14 @@ impl Row {
         true
     }
 
+    /// Checks whether there is a keyword to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `chars` - the characters in the row
+    /// * `keywords` - the keywords that should be highlighted
+    /// * `hl_type` - the specific highlighting type to use
     pub fn highlight_keywords(
         &mut self,
         index: &mut usize,
@@ -277,6 +351,13 @@ impl Row {
         return false;
     }
 
+    /// Checks whether there is a primary keyword to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `opts` - the [HighlightingOptions] to use
+    /// * `chars` - the characters in the row
     fn highlight_primary_keywords(
         &mut self,
         index: &mut usize,
@@ -291,6 +372,13 @@ impl Row {
         )
     }
 
+    /// Checks whether there is a secondary keyword to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `opts` - the [HighlightingOptions] to use
+    /// * `chars` - the characters in the row
     fn highlight_secondary_keywords(
         &mut self,
         index: &mut usize,
@@ -305,6 +393,11 @@ impl Row {
         )
     }
 
+    /// Highlights any matches in the row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `word` - the word to highlight
     fn highlight_match(&mut self, word: &Option<String>) {
         if let Some(word) = word {
             if word.is_empty() {
@@ -326,6 +419,7 @@ impl Row {
         }
     }
 
+    /// Highlights any selections in the row.
     fn highlight_selection(&mut self) {
         for [at, end] in self.selections.iter() {
             for i in *at..*end {
@@ -334,6 +428,14 @@ impl Row {
         }
     }
 
+    /// Checks whether there is a character literal to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `opts` - the [HighlightingOptions] to use
+    /// * `c` - the character at `chars[index]`
+    /// * `chars` - the characters in the row
     pub fn highlight_char(
         &mut self,
         index: &mut usize,
@@ -363,6 +465,14 @@ impl Row {
         false
     }
 
+    /// Checks whether there is an inline comment to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `opts` - the [HighlightingOptions] to use
+    /// * `_` - the character at `chars[index]`
+    /// * `chars` - the characters in the row
     pub fn highlight_comment(
         &mut self,
         index: &mut usize,
@@ -387,6 +497,14 @@ impl Row {
         false
     }
 
+    /// Checks whether there is a multiline comment to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `opts` - the [HighlightingOptions] to use
+    /// * `c` - the character at `chars[index]`
+    /// * `chars` - the characters in the row
     pub fn highlight_multiline_comment(
         &mut self,
         index: &mut usize,
@@ -416,6 +534,14 @@ impl Row {
         false
     }
 
+    /// Checks whether there is a string literal to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `opts` - the [HighlightingOptions] to use
+    /// * `c` - the character at `chars[index]`
+    /// * `chars` - the characters in the row
     pub fn highlight_string(
         &mut self,
         index: &mut usize,
@@ -446,6 +572,7 @@ impl Row {
         }
     }
 
+    ///
     pub fn highlight_number(
         &mut self,
         index: &mut usize,
@@ -479,6 +606,13 @@ impl Row {
         }
     }
 
+    /// Computes the highlighting (if any) of every grapheme in this row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `opts` - the `HighlightingOptions` to use
+    /// * `word` - the word to highlight (if any)
+    /// * `start_with_comment` - whether the start of the row is part of a multi-line comment
     pub fn highlight(
         &mut self,
         opts: &HighlightingOptions,
@@ -537,18 +671,22 @@ impl Row {
         false
     }
 
+    /// Gets the length of the row.
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Gets whether this row is empty.
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
+    /// Gets the row's contents as bytes.
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
     }
 
+    /// Gets the number of leading spaces in the row.
     pub fn get_leading_spaces(&self) -> Option<usize> {
         let mut index = 0;
         let chars: Vec<char> = self.string.chars().collect();

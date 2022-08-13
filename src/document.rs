@@ -8,16 +8,23 @@ use std::io::{Error, Write};
 
 const DEFAULT_SPACES_PER_TAB: usize = 4;
 
+/// The document that is currently being edited.
 #[derive(Default)]
 pub struct Document {
+    /// The filename of this document
     pub filename: Option<String>,
+    /// The [Rows](Row) in the document
     rows: Vec<Row>,
+    /// Whether the document is dirty
     dirty: bool,
+    /// The [filetype](FileType) of the document
     file_type: FileType,
+    /// THe number of spaces that each tab should be replaced with
     spaces_per_tab: usize,
 }
 
 impl Document {
+    /// Constructs a blank document.
     pub fn default() -> Self {
         Document {
             rows: vec![Row::default()],
@@ -28,6 +35,12 @@ impl Document {
         }
     }
 
+    /// Creates a Document from the specified file.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `filename` - the path of the file from which the Document is created
+    /// 
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered while attempting to read file
@@ -52,6 +65,12 @@ impl Document {
         })
     }
 
+    /// Computes the number of spaces for indentation in the file based on a majority
+    /// algorithm.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `rows` - the [Rows](Row) to calculate the indent from
     fn calculate_indent(rows: &Vec<Row>) -> usize {
         let mut indent_counts = HashMap::new();
         let mut prev_indent = 0;
@@ -73,6 +92,11 @@ impl Document {
             .unwrap_or(DEFAULT_SPACES_PER_TAB)
     }
 
+    /// Inserts a newline character ('\n') at the given position
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the [Position] to insert the newline character at
     fn insert_newline(&mut self, at: &Position) {
         if at.y > self.rows.len() {
             return;
@@ -87,6 +111,12 @@ impl Document {
         }
     }
 
+    /// Inserts a character at the given position
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the [Position] to insert the character at
+    /// * `c` - the character to insert
     pub fn insert(&mut self, at: &mut Position, c: char) {
         if at.y > self.rows.len() {
             return;
@@ -119,6 +149,11 @@ impl Document {
         }
     }
 
+    /// Deletes the character at the given position.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the [Position] to delete the character at
     pub fn delete(&mut self, at: &Position) {
         let len = self.rows.len();
         if at.y >= len {
@@ -138,6 +173,7 @@ impl Document {
         self.unhighlight_rows(at.y);
     }
 
+    /// Writes the document to file.
     pub fn save(&mut self) -> Result<(), Error> {
         if let Some(filename) = &self.filename {
             let mut file = fs::File::create(filename)?;
@@ -151,6 +187,13 @@ impl Document {
         Ok(())
     }
 
+    /// Finds the position of the next occurence of a string within the document.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `query` - the string to find
+    /// * `at` - the [Position] to start finding from
+    /// * `direction` - the [SearchDirection] to use
     pub fn find(&self, query: &str, at: &Position, direction: SearchDirection) -> Option<Position> {
         if at.y >= self.rows.len() {
             return None;
@@ -190,6 +233,12 @@ impl Document {
         None
     }
 
+    /// Computes the highlight of all rows in the document.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `word` - the word to highlight, if any
+    /// * `until` - the index to stop highlighting at
     pub fn highlight(&mut self, word: &Option<String>, until: Option<usize>) {
         let mut start_with_comment = false;
         let until = if let Some(until) = until {
@@ -210,15 +259,23 @@ impl Document {
         }
     }
 
+    /// Re-computes all highlighting.
     pub fn refresh_highlighting(&mut self) {
         self.unhighlight_rows(0);
         self.highlight(&None, None);
     }
 
+    /// Adds a selection in the document.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the position of the selection within the document
+    /// * `len` - the length of the selection
     pub fn add_selection(&mut self, at: Position, len: usize) {
         self.rows[at.y].add_selection(at.x, len);
     }
 
+    /// Deletes all selections made in the document.
     pub fn delete_selections(&mut self) {
         self.rows
             .iter_mut()
@@ -226,6 +283,11 @@ impl Document {
         self.dirty = true;
     }
 
+    /// Replaces all selections made in the document.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `replace` - the string to replace the selections with
     pub fn replace_selections(&mut self, replace: &Option<String>) {
         self.rows
             .iter_mut()
@@ -233,26 +295,36 @@ impl Document {
         self.dirty = true;
     }
 
+    /// Resets all selections made in the document.
     pub fn reset_selections(&mut self) {
         self.rows.iter_mut().for_each(|row| row.reset_selections());
     }
 
+    /// Gets a row in the document.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the row's index
     pub fn row(&self, index: usize) -> Option<&Row> {
         self.rows.get(index)
     }
 
+    /// Gets the number of rows in the document.
     pub fn len(&self) -> usize {
         self.rows.len()
     }
 
+    /// Gets whether the document is entirely empty.
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
     }
 
+    /// Gets whether the document is dirty.
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
 
+    /// Gets the document's filetype.
     pub fn file_type(&self) -> String {
         self.file_type.name()
     }

@@ -1,8 +1,12 @@
+/// The file type of a document.
 pub struct FileType {
+    /// The type associated with this [FileType] (e.g. "Rust" for ".rs" files)
     name: String,
+    /// The associated [HighlightingOptions] for this FileType
     hl_opts: HighlightingOptions,
 }
 
+/// The highlighting options that determine what gets highlighted in a file.
 #[derive(Default)]
 pub struct HighlightingOptions {
     numbers: bool,
@@ -48,6 +52,11 @@ impl Default for FileType {
 }
 
 impl FileType {
+    /// Constructs the FileType based on a given filename
+    /// 
+    /// # Arguments
+    /// 
+    /// * `file_name` - the name of the file
     pub fn from(file_name: &str) -> Self {
         if file_name.ends_with(".rs") {
             return Self {
@@ -200,10 +209,12 @@ impl FileType {
         Self::default()
     }
 
+    /// Gets the name of the FileType.
     pub fn name(&self) -> String {
         self.name.clone()
     }
 
+    /// Gets the [HighlightingOptions] of the FileType.
     pub fn highlighting_options(&self) -> &HighlightingOptions {
         &self.hl_opts
     }
