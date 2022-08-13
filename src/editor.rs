@@ -10,6 +10,20 @@ use termion::event::{Event, Key, MouseEvent};
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 2;
 
+// Key mappings for navigation
+const POS_UP: Key = Key::Up;
+const POS_DOWN: Key = Key::Down;
+const POS_LEFT: Key = Key::Left;
+const POS_RIGHT: Key = Key::Right;
+const WORD_LEFT: Key = Key::Alt('q');
+const WORD_RIGHT: Key = Key::Alt('w');
+const LINE_LEFT: Key = Key::Alt('b');
+const LINE_RIGHT: Key = Key::Alt('f');
+const PAGE_UP: Key = Key::Alt('t');
+const PAGE_DOWN: Key = Key::Alt('g');
+const DOC_UP: Key = Key::Home;
+const DOC_DOWN: Key = Key::End;
+
 fn die(e: &std::io::Error) {
     Terminal::clear_screen();
     panic!("{}", e);
@@ -285,7 +299,7 @@ impl Editor {
                             editor.move_cursor(Key::Right);
                             moved = true;
                         }
-                        Key::Right | Key::Down => {
+                        POS_RIGHT | POS_DOWN => {
                             direction = SearchDirection::Forward;
                             editor.move_cursor(Key::Right);
                             moved = true;
@@ -296,7 +310,7 @@ impl Editor {
                                 .add_selection(editor.cursor_position, query.len());
                             direction = SearchDirection::Backward;
                         }
-                        Key::Left | Key::Up => direction = SearchDirection::Backward,
+                        POS_LEFT | POS_UP => direction = SearchDirection::Backward,
                         _ => (),
                     }
 
@@ -373,15 +387,18 @@ impl Editor {
                     self.document.delete(&self.cursor_position);
                 }
             }
-            Key::Up
-            | Key::Down
-            | Key::Left
-            | Key::Right
-            | Key::Alt('b' | 'f' | 'g' | 't' | 'w' | 'q')
-            | Key::PageUp
-            | Key::PageDown
-            | Key::End
-            | Key::Home => self.move_cursor(keypress),
+            POS_UP
+            | POS_DOWN
+            | POS_LEFT
+            | POS_RIGHT
+            | WORD_LEFT
+            | WORD_RIGHT
+            | LINE_LEFT
+            | LINE_RIGHT
+            | PAGE_UP
+            | PAGE_DOWN
+            | DOC_UP 
+            | DOC_DOWN => self.move_cursor(keypress),
             _ => (),
         }
 
@@ -557,13 +574,13 @@ impl Editor {
         };
 
         match key {
-            Key::Up => y = y.saturating_sub(1),
-            Key::Down => {
+            POS_UP => y = y.saturating_sub(1),
+            POS_DOWN => {
                 if y < height {
                     y = y.saturating_add(1);
                 }
             }
-            Key::Left => {
+            POS_LEFT => {
                 if x > 0 {
                     x -= 1;
                 } else if y > 0 {
@@ -575,7 +592,7 @@ impl Editor {
                     }
                 }
             }
-            Key::Right => {
+            POS_RIGHT => {
                 if x < width {
                     x += 1;
                 } else if y < height {
@@ -583,19 +600,19 @@ impl Editor {
                     x = 0;
                 }
             }
-            Key::Alt('w') => {
+            WORD_RIGHT => {
                 if let Some(pos) = self.document.find_next_word(&self.cursor_position)
                 {
                     x = pos.x;
                     y = pos.y;
                 }
             }
-            Key::Alt('t') => y = y.saturating_sub(terminal_height),
-            Key::Alt('g') => y = y.saturating_add(terminal_height).min(height),
-            Key::Alt('b') => x = 0,
-            Key::Alt('f') => x = width,
-            Key::Home => y = 0,
-            Key::End => y = height,
+            LINE_LEFT => x = 0,
+            LINE_RIGHT => x = width,
+            PAGE_UP => y = y.saturating_sub(terminal_height),
+            PAGE_DOWN => y = y.saturating_add(terminal_height).min(height),
+            DOC_UP => y = 0,
+            DOC_DOWN => y = height,
             _ => (),
         }
 
@@ -607,13 +624,23 @@ impl Editor {
 
         let is_vertical_control = |k: Key| {
             match k {
-                Key::Up | Key::Down | Key::Alt('g') | Key::Alt('t') | Key::Home | Key::End => true,
+                POS_UP
+                | POS_DOWN
+                | PAGE_UP
+                | PAGE_DOWN
+                | DOC_UP
+                | DOC_DOWN => true,
                 _ => false
             }
         };
         let is_horizontal_control = |k: Key| {
             match k {
-                Key::Left | Key::Right | Key::Alt('b') | Key::Alt('f') => true,
+                POS_LEFT
+                | POS_RIGHT
+                | WORD_LEFT
+                | WORD_RIGHT
+                | LINE_LEFT
+                | LINE_RIGHT => true,
                 _ => false
             }
         };
