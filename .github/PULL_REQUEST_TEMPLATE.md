@@ -1,6 +1,6 @@
 # Summary
 
-This PR changes xyz in `hecto`. The reason for this change is because abc.
+Describe what change this PR is making and the reason for the change.
 
 #### Attached issue
 
