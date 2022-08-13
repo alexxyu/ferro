@@ -15,24 +15,32 @@ fn die(e: &std::io::Error) {
     panic!("{}", e);
 }
 
+/// The direction in which a search query should be handled.
 #[derive(PartialEq, Copy, Clone)]
 pub enum SearchDirection {
     Forward,
     Backward,
 }
 
+/// A position represented by (x, y) coordinates.
 #[derive(Default, Copy, Clone)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
 }
 
+/// A status message printed at the bottom of the editor.
 struct StatusMessage {
     text: String,
     time: Instant,
 }
 
 impl StatusMessage {
+    /// Constructs a [StatusMessage] from a string
+    /// 
+    /// # Arguments
+    /// 
+    /// * `message` - the status message's string content
     fn from(message: String) -> Self {
         Self {
             text: message,
@@ -41,19 +49,30 @@ impl StatusMessage {
     }
 }
 
+/// The editor!
 pub struct Editor {
+    /// Whether the editor application should quit
     should_quit: bool,
+    /// The [Terminal] that is used
     terminal: Terminal,
+    /// The current position of the cursor
     cursor_position: Position,
+    /// THe offset of the visible page
     offset: Position,
+    /// The maximal horizontal position that is used when the user navigates up or down
     max_position: Option<usize>,
+    /// The document being edited
     document: Document,
+    /// The status message to be displayed
     status_message: StatusMessage,
+    /// How many more times the quit command needs to be inputted before the application exits
     quit_times: u8,
+    /// The word to be highlighted, if any
     highlighted_word: Option<String>,
 }
 
 impl Editor {
+    /// Constructs the default editor.
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
         let mut initial_status =
@@ -83,6 +102,9 @@ impl Editor {
         }
     }
 
+    /// Runs the editor.
+    /// 
+    /// This is essentially an event loop and should only ever be called once.
     pub fn run(&mut self) {
         loop {
             if let Err(error) = self.refresh_screen() {
@@ -99,6 +121,11 @@ impl Editor {
         }
     }
 
+    /// Re-renders the terminal screen.
+    /// 
+    /// # Errors
+    ///
+    /// Will return `Err` if I/O error encountered
     fn refresh_screen(&mut self) -> Result<(), std::io::Error> {
         Terminal::cursor_hide();
         Terminal::cursor_position(&Position::default());
@@ -127,6 +154,7 @@ impl Editor {
         Terminal::flush()
     }
 
+    /// Draws the status bar at the bottom of the editor.
     fn draw_status_bar(&self) {
         let width = self.terminal.size().width as usize;
         let mut filename = "[No Name]".to_string();
@@ -167,6 +195,7 @@ impl Editor {
         Terminal::reset_bg_color();
     }
 
+    /// Draws the message bar at the bottom of the editor.
     fn draw_message_bar(&self) {
         Terminal::clear_current_line();
         let message = &self.status_message;
@@ -177,6 +206,11 @@ impl Editor {
         }
     }
 
+    /// Draws a given row on the terminal screen.
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - The row to be drawn
     pub fn draw_row(&self, row: &Row) {
         let width = self.terminal.size().width as usize;
         let start = self.offset.x;
@@ -202,6 +236,7 @@ impl Editor {
         }
     }
 
+    /// Draws a welcome message in the middle of the editor.
     fn draw_welcome_message(&self) {
         let mut welcome_message = format!("Hecto editor -- version {}", VERSION);
         let width = self.terminal.size().width as usize;
@@ -213,6 +248,7 @@ impl Editor {
         println!("{}\r", welcome_message);
     }
 
+    /// Saves the document being edited.
     fn save(&mut self) {
         if self.document.filename.is_none() {
             let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
@@ -230,6 +266,7 @@ impl Editor {
         }
     }
 
+    /// Searches for a string in the document.
     fn search(&mut self) {
         let old_position = self.cursor_position.clone();
         let mut direction = SearchDirection::Forward;
@@ -286,6 +323,11 @@ impl Editor {
         self.document.refresh_highlighting();
     }
 
+    /// Processes an event (i.e. a keypress or a mousepress).
+    /// 
+    /// # Errors
+    ///
+    /// Will return `Err` if I/O error encountered while reading event
     fn process_event(&mut self) -> Result<(), std::io::Error> {
         let event = Terminal::read_event()?;
         match event {
@@ -295,6 +337,15 @@ impl Editor {
         }
     }
 
+    /// Processes a keypress event.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `keypress` - the [Key] that was pressed
+    /// 
+    /// # Errors
+    ///
+    /// Will return `Err` if I/O error encountered
     fn process_keypress(&mut self, keypress: Key) -> Result<(), std::io::Error> {
         match keypress {
             Key::Ctrl('x') => {
@@ -340,6 +391,15 @@ impl Editor {
         Ok(())
     }
 
+    /// Processes a mousepress event.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `mousepress` - the [MouseEvent] that occurred
+    /// 
+    /// # Errors
+    ///
+    /// Will return `Err` if I/O error encountered
     fn process_mousepress(&mut self, mousepress: MouseEvent) -> Result<(), std::io::Error> {
         let offset = &self.offset;
         match mousepress {
@@ -355,6 +415,16 @@ impl Editor {
         Ok(())
     }
 
+    /// Prompts the user for input.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `prompt` - the prompt to print
+    /// * `callback` - the callback to use
+    /// 
+    /// # Errors
+    ///
+    /// Will return `Err` if I/O error encountered
     fn prompt<C>(&mut self, prompt: &str, mut callback: C) -> Result<Option<String>, std::io::Error>
     where
         C: FnMut(&mut Self, Key, &String),
@@ -411,6 +481,11 @@ impl Editor {
         }
     }
 
+    /// Prompts the user for a string to replace all selections with.
+    /// 
+    /// # Errors
+    ///
+    /// Will return `Err` if I/O error encountered
     fn prompt_replacement(&mut self) -> Result<Option<String>, std::io::Error> {
         let mut result = String::new();
         loop {
@@ -443,6 +518,7 @@ impl Editor {
         }
     }
 
+    /// Scrolls the screen by the height of the terminal.
     fn scroll(&mut self) {
         let Position { x, y } = self.cursor_position;
         let height = self.terminal.size().height as usize;
@@ -462,6 +538,11 @@ impl Editor {
         }
     }
 
+    /// Moves the cursor based on the key that was pressed.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `key` - The key that was pressed
     fn move_cursor(&mut self, key: Key) {
         let terminal_height = self.terminal.size().height as usize;
 
