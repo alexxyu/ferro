@@ -8,7 +8,7 @@ use std::time::Instant;
 use termion::event::{Event, Key, MouseEvent};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const QUIT_TIMES: u8 = 3;
+const QUIT_TIMES: u8 = 2;
 
 fn die(e: &std::io::Error) {
     Terminal::clear_screen();
@@ -76,7 +76,7 @@ impl Editor {
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
         let mut initial_status =
-            String::from("HELP: Ctrl-L = look for | Ctrl-S = save | Ctrl-X = quit");
+            String::from("HELP: Ctrl-L = look for | Ctrl-S = save | Ctrl-Q = quit");
 
         let document = if let Some(filename) = args.get(1) {
             if let Ok(doc) = Document::open(filename) {
@@ -348,10 +348,10 @@ impl Editor {
     /// Will return `Err` if I/O error encountered
     fn process_keypress(&mut self, keypress: Key) -> Result<(), std::io::Error> {
         match keypress {
-            Key::Ctrl('x') => {
+            Key::Ctrl('q') => {
                 if self.quit_times > 0 && self.document.is_dirty() {
                     self.status_message = StatusMessage::from(format!(
-                        "WARNING! File has unsaved changes. Press Ctrl-X {} more times to quit.",
+                        "WARNING! File has unsaved changes. Press Ctrl-Q {} more time(s) to quit.",
                         self.quit_times
                     ));
                     self.quit_times -= 1;
@@ -377,7 +377,9 @@ impl Editor {
             | Key::Down
             | Key::Left
             | Key::Right
-            | Key::Ctrl('b' | 'f' | 'a' | 'e')
+            | Key::Alt('b' | 'f' | 'g' | 't' | 'w' | 'q')
+            | Key::PageUp
+            | Key::PageDown
             | Key::End
             | Key::Home => self.move_cursor(keypress),
             _ => (),
@@ -581,10 +583,17 @@ impl Editor {
                     x = 0;
                 }
             }
-            Key::Ctrl('b') => y = y.saturating_sub(terminal_height),
-            Key::Ctrl('f') => y = y.saturating_add(terminal_height).min(height),
-            Key::Ctrl('a') => x = 0,
-            Key::Ctrl('e') => x = width,
+            Key::Alt('w') => {
+                if let Some(pos) = self.document.find_next_word(&self.cursor_position)
+                {
+                    x = pos.x;
+                    y = pos.y;
+                }
+            }
+            Key::Alt('t') => y = y.saturating_sub(terminal_height),
+            Key::Alt('g') => y = y.saturating_add(terminal_height).min(height),
+            Key::Alt('b') => x = 0,
+            Key::Alt('f') => x = width,
             Key::Home => y = 0,
             Key::End => y = height,
             _ => (),
@@ -598,13 +607,13 @@ impl Editor {
 
         let is_vertical_control = |k: Key| {
             match k {
-                Key::Up | Key::Down | Key::Ctrl('f') | Key::Ctrl('b') | Key::Home | Key::End => true,
+                Key::Up | Key::Down | Key::Alt('g') | Key::Alt('t') | Key::Home | Key::End => true,
                 _ => false
             }
         };
         let is_horizontal_control = |k: Key| {
             match k {
-                Key::Left | Key::Right | Key::Ctrl('a') | Key::Ctrl('e') => true,
+                Key::Left | Key::Right | Key::Alt('b') | Key::Alt('f') => true,
                 _ => false
             }
         };

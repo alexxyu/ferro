@@ -233,6 +233,26 @@ impl Document {
         None
     }
 
+    pub fn find_next_word(&self, at: &Position) -> Option<Position> {
+        if at.y >= self.rows.len() {
+            return None;
+        }
+
+        let y = at.y;
+        if let Some(x) = self.rows[y].find_word(at.x) {
+            Some(Position { x, y })
+        } else if y.saturating_add(1) < self.rows.len() {
+            let y_next = y.saturating_add(1);
+            if self.rows[y_next].get_leading_spaces().is_none() {
+                Some(Position { x: 0, y: y_next })
+            } else {
+                self.find_next_word(&Position { x: 0, y: y_next })
+            }
+        } else {
+            None
+        }
+    }
+
     /// Computes the highlight of all rows in the document.
     /// 
     /// # Arguments

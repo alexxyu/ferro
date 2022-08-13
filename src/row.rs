@@ -219,6 +219,31 @@ impl Row {
         None
     }
 
+    pub fn find_word(&self, at: usize) -> Option<usize> {
+        if at >= self.len() {
+            return None;
+        }
+
+        let substring: String = self.string[..]
+            .graphemes(true)
+            .skip(at)
+            .collect();
+
+        if substring.chars().nth(0).unwrap().is_alphanumeric() {
+            if let Some(x) = substring.find(is_separator) {
+                self.find_word(x + at)
+            } else {
+                None
+            }
+        } else {
+            if let Some(x) = substring.find(|c: char| c.is_alphanumeric()) {
+                Some(x + at)
+            } else {
+                None
+            }
+        }
+    }
+
     /// Replaces all selections made in the row.
     /// 
     /// # Arguments
