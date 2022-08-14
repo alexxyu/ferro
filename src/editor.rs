@@ -37,7 +37,7 @@ pub enum SearchDirection {
 }
 
 /// A position represented by (x, y) coordinates.
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, PartialEq, Debug)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
@@ -600,8 +600,15 @@ impl Editor {
                     x = 0;
                 }
             }
+            WORD_LEFT => {
+                if let Some(pos) = self.document.find_next_word(&self.cursor_position, SearchDirection::Backward)
+                {
+                    x = pos.x;
+                    y = pos.y;
+                }
+            }
             WORD_RIGHT => {
-                if let Some(pos) = self.document.find_next_word(&self.cursor_position)
+                if let Some(pos) = self.document.find_next_word(&self.cursor_position, SearchDirection::Forward)
                 {
                     x = pos.x;
                     y = pos.y;

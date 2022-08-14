@@ -219,3 +219,16 @@ impl FileType {
         &self.hl_opts
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::FileType;
+
+    #[test]
+    fn test_filetypes() {
+        assert_eq!(FileType::from("a.rs").name, "Rust");
+        assert_eq!(FileType::from("a.java").name, "Java");
+        assert_eq!(FileType::from("a.txt").name, "No filetype");
+        assert_eq!(FileType::from("foo").name, "No filetype");
+    }
+}

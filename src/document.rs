@@ -233,21 +233,36 @@ impl Document {
         None
     }
 
-    pub fn find_next_word(&self, at: &Position) -> Option<Position> {
+    /// Finds the position of the next word in the document.
+    /// 
+    /// A word is defined as a sequence of alphanumeric characters.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the position to start looking from
+    /// * `direction` - the [SearchDirection] to use
+    pub fn find_next_word(&self, at: &Position, direction: SearchDirection) -> Option<Position> {
         if at.y >= self.rows.len() {
             return None;
         }
 
         let y = at.y;
-        if let Some(x) = self.rows[y].find_next_word(at.x) {
+        let y_next = if direction == SearchDirection::Forward {
+            y.saturating_add(1)
+        } else {
+            y.saturating_sub(1)
+        };
+
+        let x_next = if direction == SearchDirection::Forward {
+            0
+        } else {
+            self.rows[y_next].len()
+        };
+
+        if let Some(x) = self.rows[y].find_next_word(at.x, direction) {
             Some(Position { x, y })
-        } else if y.saturating_add(1) < self.rows.len() {
-            let y_next = y.saturating_add(1);
-            if self.rows[y_next].get_leading_spaces().is_none() {
-                Some(Position { x: 0, y: y_next })
-            } else {
-                self.find_next_word(&Position { x: 0, y: y_next })
-            }
+        } else if y_next < self.rows.len() && (direction == SearchDirection::Forward || y > 0) {
+            Some(Position { x: x_next, y: y_next })
         } else {
             None
         }
@@ -429,5 +444,29 @@ mod test {
         assert_eq!(text_matches, doc_matches);
         assert!(doc.find(query, &Position { x: 0, y: 0 }, SearchDirection::Forward).is_none());
         assert_eq!(text_after_delete, doc_after_delete);
+    }
+
+    #[test]
+    fn find_next_word() {
+        let mut document = Document::default();
+        document.rows = vec![Row::from("Foo Bar"), Row::from("Hello, World!")];
+
+        let mut position = Position { x: 0, y: 0 };
+        let mut next_position_opt = document.find_next_word(&position, SearchDirection::Backward);
+        assert_eq!(next_position_opt, None);
+
+        next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
+        assert_eq!(next_position_opt, Some(Position { x: 4, y: 0 }));
+        position = next_position_opt.unwrap();
+        
+        next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
+        assert_eq!(next_position_opt, Some(Position { x: 0, y: 1 }));
+        position = next_position_opt.unwrap();
+        
+        next_position_opt = document.find_next_word(&position, SearchDirection::Backward);
+        assert_eq!(next_position_opt, Some(Position { x: 7, y: 0 }));
+        
+        next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
+        assert_eq!(next_position_opt, Some(Position { x: 7, y: 1 }));
     }
 }

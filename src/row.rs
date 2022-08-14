@@ -219,7 +219,36 @@ impl Row {
         None
     }
 
-    pub fn find_next_word(&self, start: usize) -> Option<usize> {
+    /// Finds the index of the next word in the row.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `at` - the index to start finding from
+    /// * `direction` - the [SearchDirection] to use
+    pub fn find_next_word(&self, at: usize, direction: SearchDirection) -> Option<usize> {
+        if direction == SearchDirection::Forward {
+            self.find_word_forward(at)
+        } else {
+            self.find_word_backward(at)
+        }
+    }
+
+    /// Finds the index of the next word in the row in the forward direction.
+    /// 
+    /// The index of the word, if found, will be the index immediately preceding
+    /// the start of that word.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `start` - the starting index of the row
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// let row = Row::from("Foo Bar");
+    /// assert_eq!(row.find_word_forward(1), Some(4));
+    /// ```
+    fn find_word_forward(&self, start: usize) -> Option<usize> {
         if start >= self.len() {
             return None;
         }
@@ -245,6 +274,49 @@ impl Row {
             Some(x.saturating_add(start).saturating_add(x_skip))
         } else {
             None
+        }
+    }
+
+    /// Finds the index of the next word in the row in the backward direction.
+    /// 
+    /// The index of the word, if found, will be the index immediately following
+    /// the end of that word.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `end` - the ending index of the row
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// let row = Row::from("Foo Bar");
+    /// assert_eq!(row.find_word_backward(5), Some(3));
+    /// ```
+    fn find_word_backward(&self, mut end: usize) -> Option<usize> {
+        if end == 0 {
+            return None;
+        }
+
+        let substring: String = self.string[..]
+            .graphemes(true)
+            .take(end)
+            .collect();
+
+        if substring.chars().nth_back(0).unwrap().is_alphanumeric() {
+            // If the cursor is currently on a word, we need to find the next separator
+            // character before we can find the next word.
+            if let Some(sep_idx) = substring.rfind(is_separator) {
+                end = sep_idx;
+            } else {
+                return Some(0);
+            }
+        }
+
+        // Look for the next alphanumeric character, which is the start of the next word.
+        if let Some(x) = substring[..end].rfind(|c: char| c.is_alphanumeric()) {
+            Some(x.saturating_add(1))
+        } else {
+            Some(0)
         }
     }
 
@@ -601,7 +673,14 @@ impl Row {
         }
     }
 
-    ///
+    /// Checks whether there is a number literal to be highlighted.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `index` - the index to check from; this gets updated to the end of the highlight
+    /// * `opts` - the [HighlightingOptions] to use
+    /// * `c` - the character at `chars[index]`
+    /// * `chars` - the characters in the row
     pub fn highlight_number(
         &mut self,
         index: &mut usize,
@@ -815,5 +894,23 @@ mod test {
         row.add_selection(13, 8);
         row.replace_selections(&None);
         assert_eq!(row.string, "humuhumu nukunuku apua");
+    }
+
+    #[test]
+    fn find_next_word() {
+        let mut row = Row::from("Foo Bar");
+        assert_eq!(row.find_next_word(1, SearchDirection::Forward), Some(4));
+        assert_eq!(row.find_next_word(4, SearchDirection::Forward), None);
+        assert_eq!(row.find_next_word(5, SearchDirection::Backward), Some(3));
+        assert_eq!(row.find_next_word(1, SearchDirection::Backward), Some(0));
+        assert_eq!(row.find_next_word(0, SearchDirection::Backward), None);
+        
+        row = Row::from("my___new_constant");
+        assert_eq!(row.find_next_word(0, SearchDirection::Forward), Some(5));
+        assert_eq!(row.find_next_word(8, SearchDirection::Backward), Some(2));
+        
+        row = Row::from("");
+        assert_eq!(row.find_next_word(0, SearchDirection::Forward), None);
+        assert_eq!(row.find_next_word(0, SearchDirection::Backward), None);
     }
 }
