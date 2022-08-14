@@ -239,7 +239,7 @@ impl Document {
         }
 
         let y = at.y;
-        if let Some(x) = self.rows[y].find_word(at.x) {
+        if let Some(x) = self.rows[y].find_next_word(at.x) {
             Some(Position { x, y })
         } else if y.saturating_add(1) < self.rows.len() {
             let y_next = y.saturating_add(1);

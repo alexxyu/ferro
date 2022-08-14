@@ -219,28 +219,32 @@ impl Row {
         None
     }
 
-    pub fn find_word(&self, at: usize) -> Option<usize> {
-        if at >= self.len() {
+    pub fn find_next_word(&self, start: usize) -> Option<usize> {
+        if start >= self.len() {
             return None;
         }
 
         let substring: String = self.string[..]
             .graphemes(true)
-            .skip(at)
+            .skip(start)
             .collect();
 
+        let mut x_skip = 0;
         if substring.chars().nth(0).unwrap().is_alphanumeric() {
-            if let Some(x) = substring.find(is_separator) {
-                self.find_word(x + at)
+            // If the cursor is currently on a word, we need to find the next separator
+            // character before we can find the next word.
+            if let Some(sep_idx) = substring.find(is_separator) {
+                x_skip = sep_idx;
             } else {
-                None
+                return None;
             }
+        }
+
+        // Look for the next alphanumeric character, which is the start of the next word.
+        if let Some(x) = substring[x_skip..].find(|c: char| c.is_alphanumeric()) {
+            Some(x.saturating_add(start).saturating_add(x_skip))
         } else {
-            if let Some(x) = substring.find(|c: char| c.is_alphanumeric()) {
-                Some(x + at)
-            } else {
-                None
-            }
+            None
         }
     }
 
