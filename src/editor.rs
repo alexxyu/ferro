@@ -691,9 +691,10 @@ mod test {
         let mut editor = Editor::default();
 
         assert!(editor.process_keypress(Key::Char('a')).is_ok());
-        assert!(editor.process_keypress(Key::Right).is_ok());
-        
         assert_eq!(editor.cursor_position, Position { x: 1, y: 0 });
+
+        assert!(editor.process_keypress(Key::Left).is_ok());
+        assert_eq!(editor.cursor_position, Position { x: 0, y: 0 });
         
         assert!(editor.process_keypress(Key::Char('\n')).is_ok());
         assert_eq!(editor.cursor_position, Position { x: 0, y: 1 });
