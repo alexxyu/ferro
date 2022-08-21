@@ -11,7 +11,7 @@ env:
 
 jobs:
   run-tests:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -45,6 +45,8 @@ jobs:
       - name: Generate code coverage report
         id: coverage
         uses: actions-rs/grcov@v0.1
+        with:
+          args: --ignore src/editor.rs
 
       - name: Upload to codecov
         uses: codecov/codecov-action@v3
