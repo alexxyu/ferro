@@ -666,3 +666,36 @@ impl Editor {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::{env, path::PathBuf};
+    use crate::{Editor, Document, Position};
+    use termion::event::Key;
+
+    #[test]
+    fn render_no_error() {
+        let mut editor = Editor::default();
+        let path: PathBuf = [
+            env::var("CARGO_MANIFEST_DIR").unwrap().as_str(),
+            "resources",
+            "tests",
+            "test_file.txt"].iter().collect();
+        editor.document = Document::open(path.to_str().unwrap()).unwrap();
+        
+        assert!(editor.refresh_screen().is_ok());
+    }
+
+    #[test]
+    fn navigate() {
+        let mut editor = Editor::default();
+
+        assert!(editor.process_keypress(Key::Char('a')).is_ok());
+        assert!(editor.process_keypress(Key::Right).is_ok());
+        
+        assert_eq!(editor.cursor_position, Position { x: 1, y: 0 });
+        
+        assert!(editor.process_keypress(Key::Char('\n')).is_ok());
+        assert_eq!(editor.cursor_position, Position { x: 0, y: 1 });
+    }
+}
