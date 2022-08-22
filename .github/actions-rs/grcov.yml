@@ -1,2 +1,3 @@
 ignore:
   - "**/editor.rs"
+  - "**/terminal.rs"
