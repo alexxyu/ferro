@@ -377,28 +377,37 @@ mod test {
     #[test]
     fn edit() {
         let mut doc = Document::default();
-        let input = "Hello, World!";
-        let split_idx = 7;
+        assert!(!doc.is_dirty());
 
         let mut pos = Position { x: 0, y: 0 };
+        doc.insert(&mut pos, 'a');
+        assert!(!doc.is_empty());
+        assert!(doc.is_dirty());
+
+        doc.delete(&pos);
+        pos = Position { x: 0, y: 0 };
+        assert!(row_to_string(&doc.rows[0]).is_empty());
+
+        let input = "Hello, World!";
+        let split_idx = 7;
         for c in input.chars() {
             doc.insert(&mut pos, c);
             pos.x += 1;
         }
 
-        assert_eq!(doc.rows.len(), 1);
+        assert_eq!(doc.len(), 1);
         assert_eq!(row_to_string(&doc.rows[0]), input);
         assert_eq!(pos.x, input.len());
         assert_eq!(pos.y, 0);
 
         let (a, b) = input.split_at(split_idx);
         doc.insert(&mut Position { x: split_idx, y: 0 }, '\n');
-        assert_eq!(doc.rows.len(), 2);
+        assert_eq!(doc.len(), 2);
         assert_eq!(row_to_string(&doc.rows[0]), a);
         assert_eq!(row_to_string(&doc.rows[1]), b);
 
         doc.insert(&mut Position { x: b.len(), y: 1 }, '\n');
-        assert_eq!(doc.rows.len(), 3);
+        assert_eq!(doc.len(), 3);
         assert_eq!(row_to_string(&doc.rows[1]), b);
         assert_eq!(row_to_string(&doc.rows[2]), "");
     }

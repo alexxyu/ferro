@@ -913,4 +913,9 @@ mod test {
         assert_eq!(row.find_next_word(0, SearchDirection::Forward), None);
         assert_eq!(row.find_next_word(0, SearchDirection::Backward), None);
     }
+
+    #[test]
+    fn highlight() {
+        // TODO: flesh out highlighting unit tests
+    }
 }
