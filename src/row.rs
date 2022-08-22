@@ -714,7 +714,8 @@ impl Row {
         }
     }
 
-    /// Computes the highlighting (if any) of every grapheme in this row.
+    /// Computes the highlighting (if any) of every grapheme in this row. This function returns
+    /// whether a multi-line comment continues into the next line.
     /// 
     /// # Arguments
     /// 
@@ -829,8 +830,9 @@ fn is_separator(c: char) -> bool {
 
 #[cfg(test)]
 mod test {
+    use crate::highlighting::Type;
     use crate::row::Row;
-    use crate::SearchDirection;
+    use crate::{SearchDirection, FileType};
 
     #[test]
     fn basics() {
@@ -917,5 +919,26 @@ mod test {
     #[test]
     fn highlight() {
         // TODO: flesh out highlighting unit tests
+        let filetype = FileType::from("foo.rs");
+
+        let mut row = Row::from("let foo=3;");
+        assert!(!row.highlight(&filetype.highlighting_options(), &None, false));
+        let mut base = vec![
+            Type::PrimaryKeywords, Type::PrimaryKeywords, Type::PrimaryKeywords,    // let
+            Type::None,
+            Type::None, Type::None, Type::None,                                     // foo
+            Type::None,                                                             // =
+            Type::Number,                                                           // 3
+            Type::None                                                              // ;
+        ];
+        assert!(row.highlighting.eq(&base));
+
+        row = Row::from("\"a3\"/*3");
+        assert!(row.highlight(&filetype.highlighting_options(), &None, false));
+        base = vec![
+            Type::String, Type::String, Type::String, Type::String,                     // "a3"
+            Type::MultilineComment, Type::MultilineComment, Type::MultilineComment      // /*3
+        ];
+        assert!(row.highlighting.eq(&base));
     }
 }
