@@ -13,7 +13,7 @@ lazy_static! {
 }
 
 /// The different types of highlighting.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Type {
     None,
     Start,
