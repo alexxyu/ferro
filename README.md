@@ -2,13 +2,12 @@
 
 A lightweight text editor built in Rust.
 
-Based on https://www.philippflenker.com/hecto/
+Based on [Philipp Flenker's](https://www.philippflenker.com/hecto/) Rust tutorial.
 
 ## Features
 
 * vim-like navigation
-* syntax highlighting
-* incremental forward and backward search
-* search-and-delete / search-and-replace
-* auto-detect the number of spaces used per indent
-* support for UTF-8 text
+* Syntax highlighting
+* Incremental forward and backward search
+* Search-and-delete / search-and-replace
+* Auto-detection of indentation
