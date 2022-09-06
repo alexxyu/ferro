@@ -10,10 +10,10 @@ pub struct FileType {
 #[derive(Default)]
 pub struct HighlightingOptions {
     numbers: bool,
-    strings: bool,
     characters: bool,
+    strings: Option<Vec<char>>,
     comments: Option<String>,
-    multiline_comments: bool,
+    multiline_comments: Option<Vec<(String, String)>>,
     primary_keywords: Vec<String>,
     secondary_keywords: Vec<String>,
 }
@@ -22,17 +22,17 @@ impl HighlightingOptions {
     pub fn numbers(&self) -> bool {
         self.numbers
     }
-    pub fn strings(&self) -> bool {
-        self.strings
-    }
     pub fn characters(&self) -> bool {
         self.characters
+    }
+    pub fn strings(&self) -> &Option<Vec<char>> {
+        &self.strings
     }
     pub fn comments(&self) -> &Option<String> {
         &self.comments
     }
-    pub fn multiline_comments(&self) -> bool {
-        self.multiline_comments
+    pub fn multiline_comments(&self) -> &Option<Vec<(String, String)>> {
+        &self.multiline_comments
     }
     pub fn primary_keywords(&self) -> &Vec<String> {
         &self.primary_keywords
@@ -63,10 +63,12 @@ impl FileType {
                 name: String::from("Rust"),
                 hl_opts: HighlightingOptions {
                     numbers: true,
-                    strings: true,
                     characters: true,
+                    strings: Some(vec!['"']),
                     comments: Some("//".to_string()),
-                    multiline_comments: true,
+                    multiline_comments: Some(vec![
+                        ("/*".to_string(), "*/".to_string()),
+                    ]),
                     primary_keywords: vec![
                         "as".to_string(),
                         "break".to_string(),
@@ -143,10 +145,12 @@ impl FileType {
                 name: String::from("Java"),
                 hl_opts: HighlightingOptions {
                     numbers: true,
-                    strings: true,
                     characters: true,
+                    strings: Some(vec!['"']),
                     comments: Some("//".to_string()),
-                    multiline_comments: true,
+                    multiline_comments: Some(vec![
+                        ("/*".to_string(), "*/".to_string()),
+                    ]),
                     primary_keywords: vec![
                         "abstract".to_string(),
                         "assert".to_string(),
@@ -203,7 +207,59 @@ impl FileType {
                         "short".to_string(),
                     ],
                 },
-            };
+            }
+        } else if file_name.ends_with(".py") {
+            return Self {
+                name: String::from("Python"),
+                hl_opts: HighlightingOptions {
+                    numbers: true,
+                    characters: false,
+                    strings: Some(vec!['"', '\'']),
+                    comments: Some("#".to_string()),
+                    multiline_comments: Some(vec![
+                        ("'''".to_string(), "'''".to_string()),
+                        ("\"\"\"".to_string(), "\"\"\"".to_string()),
+                    ]),
+                    primary_keywords: vec![
+                        "False".to_string(),
+                        "None".to_string(),
+                        "True".to_string(),
+                        "and".to_string(),
+                        "as".to_string(),
+                        "assert".to_string(),
+                        "async".to_string(),
+                        "await".to_string(),
+                        "break".to_string(),
+                        "class".to_string(),
+                        "continue".to_string(),
+                        "def".to_string(),
+                        "del".to_string(),
+                        "elif".to_string(),
+                        "else".to_string(),
+                        "except".to_string(),
+                        "finally".to_string(),
+                        "for".to_string(),
+                        "from".to_string(),
+                        "global".to_string(),
+                        "if".to_string(),
+                        "import".to_string(),
+                        "in".to_string(),
+                        "is".to_string(),
+                        "lambda".to_string(),
+                        "nonlocal".to_string(),
+                        "not".to_string(),
+                        "or".to_string(),
+                        "pass".to_string(),
+                        "raise".to_string(),
+                        "return".to_string(),
+                        "try".to_string(),
+                        "while".to_string(),
+                        "with".to_string(),
+                        "yield".to_string(),
+                    ],
+                    secondary_keywords: vec![],
+                },
+            }
         }
 
         Self::default()

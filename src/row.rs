@@ -598,27 +598,36 @@ impl Row {
         false
     }
 
-    /// Checks whether there is a multiline comment to be highlighted.
+    /// Checks whether there is a multiline comment to be highlighted in this row. If so,
+    /// this function returns the delimiter that closes the multiline comment.
     /// 
     /// # Arguments
     /// 
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
-    /// * `c` - the character at `chars[index]`
+    /// * `_` - the character at `chars[index]`
     /// * `chars` - the characters in the row
     pub fn highlight_multiline_comment(
         &mut self,
         index: &mut usize,
         opts: &HighlightingOptions,
-        c: char,
+        _: char,
         chars: &[char],
-    ) -> bool {
-        if opts.multiline_comments() && c == '/' && *index < chars.len() {
-            if let Some(next_char) = chars.get(index.saturating_add(1)) {
-                if *next_char == '*' {
-                    let closing_index =
-                        if let Some(closing_index) = self.string[*index + 2..].find("*/") {
-                            *index + closing_index + 4
+    ) -> Option<String> {
+        if let Some(multiline_comment_delims) = opts.multiline_comments() {
+            // Check for presence of possible opening delims for a multiline comment
+            for (opening_delim, closing_delim) in multiline_comment_delims {
+                if let Some(k) = self.string[*index..].find(opening_delim) {
+                    if k != 0 {
+                        continue;
+                    }
+
+                    // closing_index is the index after the closing delim, or the end of the line (if no closing delim)
+                    let mut multiline_is_closed = false;
+                    let closing_index = 
+                        if let Some(closing_index) = self.string[*index + opening_delim.len()..].find(closing_delim) {
+                            multiline_is_closed = true;
+                            *index + opening_delim.len() + closing_index + closing_delim.len()
                         } else {
                             chars.len()
                         };
@@ -627,12 +636,16 @@ impl Row {
                         *index += 1;
                     }
 
-                    return true;
+                    return if multiline_is_closed {
+                        Some(String::new())
+                    } else {
+                        Some(closing_delim.to_string())
+                    };
                 }
             }
         }
 
-        false
+        None
     }
 
     /// Checks whether there is a string literal to be highlighted.
@@ -650,27 +663,31 @@ impl Row {
         c: char,
         chars: &[char],
     ) -> bool {
-        if opts.strings() && c == '"' {
-            let mut prev_char = c;
-            loop {
-                self.highlighting.push(highlighting::Type::String);
-                *index += 1;
-                if let Some(next_char) = chars.get(*index) {
-                    if prev_char != '\\' && *next_char == '"' {
-                        break;
+        if let Some(string_delims) = opts.strings() {
+            for string_delim in string_delims {
+                if c == *string_delim {
+                    let mut prev_char = c;
+                    loop {
+                        self.highlighting.push(highlighting::Type::String);
+                        *index += 1;
+                        if let Some(next_char) = chars.get(*index) {
+                            if prev_char != '\\' && *next_char == *string_delim {
+                                break;
+                            }
+                            prev_char = *next_char;
+                        } else {
+                            break;
+                        }
                     }
-                    prev_char = *next_char;
-                } else {
-                    break;
+        
+                    self.highlighting.push(highlighting::Type::String);
+                    *index += 1;
+                    return true;
                 }
             }
-
-            self.highlighting.push(highlighting::Type::String);
-            *index += 1;
-            true
-        } else {
-            false
         }
+        
+        false
     }
 
     /// Checks whether there is a number literal to be highlighted.
@@ -714,47 +731,56 @@ impl Row {
         }
     }
 
-    /// Computes the highlighting (if any) of every grapheme in this row. This function returns
-    /// whether a multi-line comment continues into the next line.
+    /// Computes the highlighting (if any) of every grapheme in this row.
     /// 
     /// # Arguments
     /// 
     /// * `opts` - the `HighlightingOptions` to use
     /// * `word` - the word to highlight (if any)
-    /// * `start_with_comment` - whether the start of the row is part of a multi-line comment
+    /// * `look_for_multiline_close` - until this delimiter is found, graphemes are highlighted as a multiline comment.
+    ///     This function changes this accordingly whenever a multiline comment opens or closes.
     pub fn highlight(
         &mut self,
         opts: &HighlightingOptions,
         word: &Option<String>,
-        start_with_comment: bool,
-    ) -> bool {
+        look_for_multiline_close: &mut Option<String>,
+    ) {
         let chars: Vec<char> = self.string.chars().collect();
         if self.is_highlighted && word.is_none() {
-            return false;
+            *look_for_multiline_close = None;
+            return;
         }
 
         self.highlighting = Vec::new();
         let mut index = 0;
-        let mut in_multiline_comment = start_with_comment;
 
-        if in_multiline_comment {
-            let closing_index = if let Some(closing_index) = self.string.find("*/") {
-                closing_index + 2
-            } else {
-                chars.len()
-            };
+        // If the line is part of a multiline comment, we first look for a possible closing delim
+        // on this line. We don't need to do special highlight checks for anything until that point.
+        if let Some(closing_delim) = look_for_multiline_close {
+            let mut multiline_is_closed = false;
+            let closing_index = 
+                if let Some(closing_index) = self.string.find(&String::clone(closing_delim)) {
+                    multiline_is_closed = true;
+                    closing_index + closing_delim.len()
+                } else {
+                    chars.len()
+                };
             for _ in 0..closing_index {
                 self.highlighting.push(highlighting::Type::MultilineComment);
             }
             index = closing_index;
+
+            if multiline_is_closed {
+                *look_for_multiline_close = None;
+            }
         }
 
         while let Some(c) = chars.get(index) {
-            if self.highlight_multiline_comment(&mut index, opts, *c, &chars) {
-                in_multiline_comment = true;
+            if let Some(closing_delim) = self.highlight_multiline_comment(&mut index, opts, *c, &chars) {
+                *look_for_multiline_close = Some(closing_delim);
                 continue;
             }
-            in_multiline_comment = false;
+            *look_for_multiline_close = None;
             if self.highlight_char(&mut index, opts, *c, &chars)
                 || self.highlight_comment(&mut index, opts, *c, &chars)
                 || self.highlight_primary_keywords(&mut index, opts, &chars)
@@ -772,12 +798,11 @@ impl Row {
         self.highlight_match(word);
         self.highlight_selection();
 
-        if in_multiline_comment && &self.string[self.string.len().saturating_sub(2)..] != "*/" {
-            return true;
+        if let Some(_) = look_for_multiline_close {
+            return;
         }
 
         self.is_highlighted = true;
-        false
     }
 
     /// Gets the length of the row.
@@ -917,12 +942,11 @@ mod test {
     }
 
     #[test]
-    fn highlight() {
+    fn highlight_rust() {
         // TODO: flesh out highlighting unit tests
         let filetype = FileType::from("foo.rs");
 
         let mut row = Row::from("let foo=3;");
-        assert!(!row.highlight(&filetype.highlighting_options(), &None, false));
         let mut base = vec![
             Type::PrimaryKeywords, Type::PrimaryKeywords, Type::PrimaryKeywords,    // let
             Type::None,
@@ -931,14 +955,17 @@ mod test {
             Type::Number,                                                           // 3
             Type::None                                                              // ;
         ];
+        let mut look_for_multiline_close = None;
+        row.highlight(&filetype.highlighting_options(), &None, &mut look_for_multiline_close);
         assert!(row.highlighting.eq(&base));
 
         row = Row::from("\"a3\"/*3");
-        assert!(row.highlight(&filetype.highlighting_options(), &None, false));
         base = vec![
             Type::String, Type::String, Type::String, Type::String,                     // "a3"
             Type::MultilineComment, Type::MultilineComment, Type::MultilineComment      // /*3
         ];
+        row.highlight(&filetype.highlighting_options(), &None, &mut look_for_multiline_close);
         assert!(row.highlighting.eq(&base));
+        assert!(look_for_multiline_close == Some("*/".to_string()));
     }
 }
