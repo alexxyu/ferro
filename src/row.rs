@@ -656,27 +656,31 @@ impl Row {
         c: char,
         chars: &[char],
     ) -> bool {
-        if opts.strings() && c == '"' {
-            let mut prev_char = c;
-            loop {
-                self.highlighting.push(highlighting::Type::String);
-                *index += 1;
-                if let Some(next_char) = chars.get(*index) {
-                    if prev_char != '\\' && *next_char == '"' {
-                        break;
+        if let Some(string_delims) = opts.strings() {
+            for string_delim in string_delims {
+                if c == *string_delim {
+                    let mut prev_char = c;
+                    loop {
+                        self.highlighting.push(highlighting::Type::String);
+                        *index += 1;
+                        if let Some(next_char) = chars.get(*index) {
+                            if prev_char != '\\' && *next_char == *string_delim {
+                                break;
+                            }
+                            prev_char = *next_char;
+                        } else {
+                            break;
+                        }
                     }
-                    prev_char = *next_char;
-                } else {
-                    break;
+        
+                    self.highlighting.push(highlighting::Type::String);
+                    *index += 1;
+                    return true;
                 }
             }
-
-            self.highlighting.push(highlighting::Type::String);
-            *index += 1;
-            true
-        } else {
-            false
         }
+        
+        false
     }
 
     /// Checks whether there is a number literal to be highlighted.

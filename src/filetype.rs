@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 /// The file type of a document.
 pub struct FileType {
     /// The type associated with this [FileType] (e.g. "Rust" for ".rs" files)
@@ -12,10 +10,10 @@ pub struct FileType {
 #[derive(Default)]
 pub struct HighlightingOptions {
     numbers: bool,
-    strings: bool,
     characters: bool,
+    strings: Option<Vec<char>>,
     comments: Option<String>,
-    multiline_comments: Option<HashMap<String, String>>,
+    multiline_comments: Option<Vec<(String, String)>>,
     primary_keywords: Vec<String>,
     secondary_keywords: Vec<String>,
 }
@@ -24,16 +22,16 @@ impl HighlightingOptions {
     pub fn numbers(&self) -> bool {
         self.numbers
     }
-    pub fn strings(&self) -> bool {
-        self.strings
-    }
     pub fn characters(&self) -> bool {
         self.characters
+    }
+    pub fn strings(&self) -> &Option<Vec<char>> {
+        &self.strings
     }
     pub fn comments(&self) -> &Option<String> {
         &self.comments
     }
-    pub fn multiline_comments(&self) -> &Option<HashMap<String, String>> {
+    pub fn multiline_comments(&self) -> &Option<Vec<(String, String)>> {
         &self.multiline_comments
     }
     pub fn primary_keywords(&self) -> &Vec<String> {
@@ -65,12 +63,12 @@ impl FileType {
                 name: String::from("Rust"),
                 hl_opts: HighlightingOptions {
                     numbers: true,
-                    strings: true,
                     characters: true,
+                    strings: Some(vec!['"']),
                     comments: Some("//".to_string()),
-                    multiline_comments: Some(HashMap::from([
+                    multiline_comments: Some(vec![
                         ("/*".to_string(), "*/".to_string()),
-                    ])),
+                    ]),
                     primary_keywords: vec![
                         "as".to_string(),
                         "break".to_string(),
@@ -147,12 +145,12 @@ impl FileType {
                 name: String::from("Java"),
                 hl_opts: HighlightingOptions {
                     numbers: true,
-                    strings: true,
                     characters: true,
+                    strings: Some(vec!['"']),
                     comments: Some("//".to_string()),
-                    multiline_comments: Some(HashMap::from([
+                    multiline_comments: Some(vec![
                         ("/*".to_string(), "*/".to_string()),
-                    ])),
+                    ]),
                     primary_keywords: vec![
                         "abstract".to_string(),
                         "assert".to_string(),
@@ -215,13 +213,13 @@ impl FileType {
                 name: String::from("Python"),
                 hl_opts: HighlightingOptions {
                     numbers: true,
-                    strings: true,
-                    characters: true,
+                    characters: false,
+                    strings: Some(vec!['"', '\'']),
                     comments: Some("#".to_string()),
-                    multiline_comments: Some(HashMap::from([
+                    multiline_comments: Some(vec![
                         ("'''".to_string(), "'''".to_string()),
                         ("\"\"\"".to_string(), "\"\"\"".to_string()),
-                    ])),
+                    ]),
                     primary_keywords: vec![
                         "False".to_string(),
                         "None".to_string(),
