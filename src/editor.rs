@@ -458,7 +458,6 @@ impl Editor {
                     Key::Backspace => result.truncate(result.len().saturating_sub(1)),
                     Key::Char('\n') => {
                         self.document.reset_selections();
-                        result = "\0".to_string();
                         break;
                     }
                     Key::Char(c) => {
@@ -468,7 +467,6 @@ impl Editor {
                     }
                     Key::Ctrl('d') => {
                         self.document.delete_selections();
-                        result = "\0".to_string();
                         break;
                     }
                     Key::Ctrl('r') => {
@@ -478,7 +476,6 @@ impl Editor {
                         } else {
                             self.document.reset_selections();
                         }
-                        result = "\0".to_string();
                         break;
                     }
                     Key::Esc => {
