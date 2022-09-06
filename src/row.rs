@@ -852,7 +852,7 @@ fn is_separator(c: char) -> bool {
 mod test {
     use crate::highlighting::Type;
     use crate::row::Row;
-    use crate::{SearchDirection};
+    use crate::{SearchDirection, FileType};
 
     #[test]
     fn basics() {
@@ -937,8 +937,10 @@ mod test {
     }
 
     #[test]
-    fn highlight() {
+    fn highlight_rust() {
         // TODO: flesh out highlighting unit tests
+        let filetype = FileType::from("foo.rs");
+
         let mut row = Row::from("let foo=3;");
         let mut base = vec![
             Type::PrimaryKeywords, Type::PrimaryKeywords, Type::PrimaryKeywords,    // let
@@ -948,6 +950,8 @@ mod test {
             Type::Number,                                                           // 3
             Type::None                                                              // ;
         ];
+        let mut look_for_multiline_close = None;
+        row.highlight(&filetype.highlighting_options(), &None, &mut look_for_multiline_close);
         assert!(row.highlighting.eq(&base));
 
         row = Row::from("\"a3\"/*3");
@@ -955,6 +959,8 @@ mod test {
             Type::String, Type::String, Type::String, Type::String,                     // "a3"
             Type::MultilineComment, Type::MultilineComment, Type::MultilineComment      // /*3
         ];
+        row.highlight(&filetype.highlighting_options(), &None, &mut look_for_multiline_close);
         assert!(row.highlighting.eq(&base));
+        assert!(look_for_multiline_close == Some("*/".to_string()));
     }
 }
