@@ -1,7 +1,6 @@
 use crate::highlighting;
 use crate::HighlightingOptions;
 use crate::SearchDirection;
-use crate::highlighting::Type;
 use std::vec;
 use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
@@ -616,14 +615,18 @@ impl Row {
         chars: &[char],
     ) -> Option<String> {
         if let Some(multiline_comment_delims) = opts.multiline_comments() {
+            // Check for presence of possible opening delims for a multiline comment
             for (opening_delim, closing_delim) in multiline_comment_delims {
                 if let Some(k) = self.string[*index..].find(opening_delim) {
                     if k != 0 {
                         continue;
                     }
 
+                    // closing_index is the index after the closing delim, or the end of the line (if no closing delim)
+                    let mut multiline_is_closed = false;
                     let closing_index = 
                         if let Some(closing_index) = self.string[*index + opening_delim.len()..].find(closing_delim) {
+                            multiline_is_closed = true;
                             *index + opening_delim.len() + closing_index + closing_delim.len()
                         } else {
                             chars.len()
@@ -633,7 +636,11 @@ impl Row {
                         *index += 1;
                     }
 
-                    return Some(closing_delim.to_string());
+                    return if multiline_is_closed {
+                        Some(String::new())
+                    } else {
+                        Some(closing_delim.to_string())
+                    };
                 }
             }
         }
@@ -747,9 +754,13 @@ impl Row {
         self.highlighting = Vec::new();
         let mut index = 0;
 
+        // If the line is part of a multiline comment, we first look for a possible closing delim
+        // on this line. We don't need to do special highlight checks for anything until that point.
         if let Some(closing_delim) = look_for_multiline_close {
+            let mut multiline_is_closed = false;
             let closing_index = 
                 if let Some(closing_index) = self.string.find(&String::clone(closing_delim)) {
+                    multiline_is_closed = true;
                     closing_index + closing_delim.len()
                 } else {
                     chars.len()
@@ -758,13 +769,15 @@ impl Row {
                 self.highlighting.push(highlighting::Type::MultilineComment);
             }
             index = closing_index;
+
+            if multiline_is_closed {
+                *look_for_multiline_close = None;
+            }
         }
 
-        let mut start_multiline_comment = false;
         while let Some(c) = chars.get(index) {
             if let Some(closing_delim) = self.highlight_multiline_comment(&mut index, opts, *c, &chars) {
                 *look_for_multiline_close = Some(closing_delim);
-                start_multiline_comment = true;
                 continue;
             }
             *look_for_multiline_close = None;
@@ -785,19 +798,11 @@ impl Row {
         self.highlight_match(word);
         self.highlight_selection();
 
-        if let Some(closing_delim) = look_for_multiline_close {
-            let k = self.string.len().saturating_sub(closing_delim.len());
-            if (k == 0 && start_multiline_comment) ||
-                !matches!(self.highlighting.get(k.saturating_sub(1)), Some(Type::MultilineComment)) ||
-                &self.string[k..] != closing_delim
-            {
-                *look_for_multiline_close = Some(closing_delim.to_string());
-                return;
-            }
+        if let Some(_) = look_for_multiline_close {
+            return;
         }
 
         self.is_highlighted = true;
-        *look_for_multiline_close = None;
     }
 
     /// Gets the length of the row.
