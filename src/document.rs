@@ -275,7 +275,7 @@ impl Document {
     /// * `word` - the word to highlight, if any
     /// * `until` - the index to stop highlighting at
     pub fn highlight(&mut self, word: &Option<String>, until: Option<usize>) {
-        let mut start_with_comment = false;
+        let mut look_for_multiline_close = None;
         let until = if let Some(until) = until {
             if until.saturating_add(1) < self.rows.len() {
                 until.saturating_add(1)
@@ -286,10 +286,10 @@ impl Document {
             self.rows.len()
         };
         for row in &mut self.rows[..until] {
-            start_with_comment = row.highlight(
+            row.highlight(
                 self.file_type.highlighting_options(),
                 word,
-                start_with_comment,
+                &mut look_for_multiline_close,
             );
         }
     }
