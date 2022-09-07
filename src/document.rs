@@ -97,17 +97,31 @@ impl Document {
     /// # Arguments
     /// 
     /// * `at` - the [Position] to insert the newline character at
-    fn insert_newline(&mut self, at: &Position) {
+    fn insert_newline(&mut self, at: &Position) -> usize {
         if at.y > self.rows.len() {
-            return;
+            return 0;
         }
 
         if at.y == self.rows.len() {
-            self.rows.push(Row::default());
+            if let Some(prev_row) = self.rows.last() {
+                let indent = prev_row.get_leading_spaces().unwrap_or(0);
+                self.rows.push(Row::from(" ".repeat(indent).as_str()));
+                indent
+            } else {
+                self.rows.push(Row::default());
+                0
+            }
         } else {
             let current_row = &mut self.rows[at.y];
-            let new_row = current_row.split(at.x);
-            self.rows.insert(at.y + 1, new_row);
+            let indent = current_row.get_leading_spaces().unwrap_or(0);
+
+            let mut new_row = current_row.split(at.x);
+            for _ in 0..indent {
+                new_row.insert(0, ' ');
+            }
+
+            self.rows.insert(at.y.saturating_add(1), new_row);
+            indent
         }
     }
 
@@ -117,29 +131,32 @@ impl Document {
     /// 
     /// * `at` - the [Position] to insert the character at
     /// * `c` - the character to insert
-    pub fn insert(&mut self, at: &mut Position, c: char) {
+    pub fn insert(&mut self, at: &mut Position, c: char) -> usize {
         if at.y > self.rows.len() {
-            return;
+            return 0;
         }
 
         self.dirty = true;
-        if c == '\n' {
-            self.insert_newline(at);
+        let indent = if c == '\n' {
+            self.insert_newline(&at)
         } else if c == '\t' {
             for _ in 0..self.spaces_per_tab {
                 self.insert(at, ' ');
             }
-            at.x += self.spaces_per_tab as usize - 1;
+            self.spaces_per_tab as usize - 1
         } else if at.y == self.rows.len() {
             let mut row = Row::default();
             row.insert(0, c);
             self.rows.push(row);
+            0
         } else {
             let row = &mut self.rows[at.y];
             row.insert(at.x, c);
-        }
+            0
+        };
 
         self.unhighlight_rows(at.y);
+        return indent;
     }
 
     fn unhighlight_rows(&mut self, start: usize) {
