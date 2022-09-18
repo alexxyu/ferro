@@ -387,6 +387,8 @@ mod test {
     use std::{env, fs, path::PathBuf};
     use crate::{Document, Position, Row, SearchDirection};
 
+    use super::DEFAULT_SPACES_PER_TAB;
+
     fn row_to_string(row: &Row) -> String {
         String::from_utf8_lossy(row.as_bytes()).to_string()
     } 
@@ -397,7 +399,7 @@ mod test {
         assert!(!doc.is_dirty());
 
         let mut pos = Position { x: 0, y: 0 };
-        doc.insert(&mut pos, 'a');
+        assert_eq!(doc.insert(&mut pos, 'a'), 0);
         assert!(!doc.is_empty());
         assert!(doc.is_dirty());
 
@@ -408,7 +410,7 @@ mod test {
         let input = "Hello, World!";
         let split_idx = 7;
         for c in input.chars() {
-            doc.insert(&mut pos, c);
+            assert_eq!(doc.insert(&mut pos, c), 0);
             pos.x += 1;
         }
 
@@ -418,12 +420,12 @@ mod test {
         assert_eq!(pos.y, 0);
 
         let (a, b) = input.split_at(split_idx);
-        doc.insert(&mut Position { x: split_idx, y: 0 }, '\n');
+        assert_eq!(doc.insert(&mut Position { x: split_idx, y: 0 }, '\n'), 0);
         assert_eq!(doc.len(), 2);
         assert_eq!(row_to_string(&doc.rows[0]), a);
         assert_eq!(row_to_string(&doc.rows[1]), b);
 
-        doc.insert(&mut Position { x: b.len(), y: 1 }, '\n');
+        assert_eq!(doc.insert(&mut Position { x: b.len(), y: 1 }, '\n'), 0);
         assert_eq!(doc.len(), 3);
         assert_eq!(row_to_string(&doc.rows[1]), b);
         assert_eq!(row_to_string(&doc.rows[2]), "");
@@ -494,5 +496,28 @@ mod test {
         
         next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
         assert_eq!(next_position_opt, Some(Position { x: 7, y: 1 }));
+    }
+
+    #[test]
+    fn indent() {
+        let mut document = Document::default();
+        document.rows = vec![Row::from("fn main() {"), Row::from("    println!(\"Hello, World!\")"), Row::from("}")];
+
+        let mut position = Position { x: 0, y: 0 };
+        assert_eq!(document.rows[0].get_leading_spaces(), None);
+        assert_eq!(document.insert(&mut position, '\n'), 0);
+        assert_eq!(document.rows[1].get_leading_spaces(), None);
+
+        position = Position { x: 0, y: 1 };
+        assert_eq!(document.insert(&mut position, '\t'), DEFAULT_SPACES_PER_TAB - 1);
+        assert_eq!(document.rows[1].get_leading_spaces(), Some(DEFAULT_SPACES_PER_TAB));
+
+        position = Position { x: 7, y: 2 };
+        assert_eq!(document.insert(&mut position, '\n'), 4);
+        assert_eq!(document.rows[3].get_leading_spaces(), Some(4));
+
+        position = Position { x: 1, y: 4 };
+        assert_eq!(document.insert(&mut position, '\n'), 0);
+        assert_eq!(document.rows[5].get_leading_spaces(), None);
     }
 }
