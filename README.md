@@ -6,8 +6,8 @@ Based on [Philipp Flenker's](https://www.philippflenker.com/hecto/) Rust tutoria
 
 ## Features
 
-* vim-like navigation
-* Syntax highlighting
+* vim-like navigation controls
+* Syntax highlighting for Rust, Java, and Python
 * Incremental forward and backward search
 * Search-and-delete / search-and-replace
-* Auto-detection of indentation
+* Auto-indentation

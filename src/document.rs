@@ -97,17 +97,31 @@ impl Document {
     /// # Arguments
     /// 
     /// * `at` - the [Position] to insert the newline character at
-    fn insert_newline(&mut self, at: &Position) {
+    fn insert_newline(&mut self, at: &Position) -> usize {
         if at.y > self.rows.len() {
-            return;
+            return 0;
         }
 
         if at.y == self.rows.len() {
-            self.rows.push(Row::default());
+            if let Some(prev_row) = self.rows.last() {
+                let indent = prev_row.get_leading_spaces().unwrap_or(0);
+                self.rows.push(Row::from(" ".repeat(indent).as_str()));
+                indent
+            } else {
+                self.rows.push(Row::default());
+                0
+            }
         } else {
             let current_row = &mut self.rows[at.y];
-            let new_row = current_row.split(at.x);
-            self.rows.insert(at.y + 1, new_row);
+            let indent = current_row.get_leading_spaces().unwrap_or(0);
+
+            let mut new_row = current_row.split(at.x);
+            for _ in 0..indent {
+                new_row.insert(0, ' ');
+            }
+
+            self.rows.insert(at.y.saturating_add(1), new_row);
+            indent
         }
     }
 
@@ -117,29 +131,32 @@ impl Document {
     /// 
     /// * `at` - the [Position] to insert the character at
     /// * `c` - the character to insert
-    pub fn insert(&mut self, at: &mut Position, c: char) {
+    pub fn insert(&mut self, at: &mut Position, c: char) -> usize {
         if at.y > self.rows.len() {
-            return;
+            return 0;
         }
 
         self.dirty = true;
-        if c == '\n' {
-            self.insert_newline(at);
+        let indent = if c == '\n' {
+            self.insert_newline(&at)
         } else if c == '\t' {
             for _ in 0..self.spaces_per_tab {
                 self.insert(at, ' ');
             }
-            at.x += self.spaces_per_tab as usize - 1;
+            self.spaces_per_tab as usize - 1
         } else if at.y == self.rows.len() {
             let mut row = Row::default();
             row.insert(0, c);
             self.rows.push(row);
+            0
         } else {
             let row = &mut self.rows[at.y];
             row.insert(at.x, c);
-        }
+            0
+        };
 
         self.unhighlight_rows(at.y);
+        return indent;
     }
 
     fn unhighlight_rows(&mut self, start: usize) {
@@ -370,6 +387,8 @@ mod test {
     use std::{env, fs, path::PathBuf};
     use crate::{Document, Position, Row, SearchDirection};
 
+    use super::DEFAULT_SPACES_PER_TAB;
+
     fn row_to_string(row: &Row) -> String {
         String::from_utf8_lossy(row.as_bytes()).to_string()
     } 
@@ -380,7 +399,7 @@ mod test {
         assert!(!doc.is_dirty());
 
         let mut pos = Position { x: 0, y: 0 };
-        doc.insert(&mut pos, 'a');
+        assert_eq!(doc.insert(&mut pos, 'a'), 0);
         assert!(!doc.is_empty());
         assert!(doc.is_dirty());
 
@@ -391,7 +410,7 @@ mod test {
         let input = "Hello, World!";
         let split_idx = 7;
         for c in input.chars() {
-            doc.insert(&mut pos, c);
+            assert_eq!(doc.insert(&mut pos, c), 0);
             pos.x += 1;
         }
 
@@ -401,12 +420,12 @@ mod test {
         assert_eq!(pos.y, 0);
 
         let (a, b) = input.split_at(split_idx);
-        doc.insert(&mut Position { x: split_idx, y: 0 }, '\n');
+        assert_eq!(doc.insert(&mut Position { x: split_idx, y: 0 }, '\n'), 0);
         assert_eq!(doc.len(), 2);
         assert_eq!(row_to_string(&doc.rows[0]), a);
         assert_eq!(row_to_string(&doc.rows[1]), b);
 
-        doc.insert(&mut Position { x: b.len(), y: 1 }, '\n');
+        assert_eq!(doc.insert(&mut Position { x: b.len(), y: 1 }, '\n'), 0);
         assert_eq!(doc.len(), 3);
         assert_eq!(row_to_string(&doc.rows[1]), b);
         assert_eq!(row_to_string(&doc.rows[2]), "");
@@ -477,5 +496,28 @@ mod test {
         
         next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
         assert_eq!(next_position_opt, Some(Position { x: 7, y: 1 }));
+    }
+
+    #[test]
+    fn indent() {
+        let mut document = Document::default();
+        document.rows = vec![Row::from("fn main() {"), Row::from("    println!(\"Hello, World!\")"), Row::from("}")];
+
+        let mut position = Position { x: 0, y: 0 };
+        assert_eq!(document.rows[0].get_leading_spaces(), None);
+        assert_eq!(document.insert(&mut position, '\n'), 0);
+        assert_eq!(document.rows[1].get_leading_spaces(), None);
+
+        position = Position { x: 0, y: 1 };
+        assert_eq!(document.insert(&mut position, '\t'), DEFAULT_SPACES_PER_TAB - 1);
+        assert_eq!(document.rows[1].get_leading_spaces(), Some(DEFAULT_SPACES_PER_TAB));
+
+        position = Position { x: 7, y: 2 };
+        assert_eq!(document.insert(&mut position, '\n'), 4);
+        assert_eq!(document.rows[3].get_leading_spaces(), Some(4));
+
+        position = Position { x: 1, y: 4 };
+        assert_eq!(document.insert(&mut position, '\n'), 0);
+        assert_eq!(document.rows[5].get_leading_spaces(), None);
     }
 }

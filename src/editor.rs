@@ -377,8 +377,8 @@ impl Editor {
             Key::Ctrl('s') => self.save(),
             Key::Ctrl('l') => self.search(),
             Key::Char(c) => {
-                self.document.insert(&mut self.cursor_position, c);
-                self.move_cursor(Key::Right);
+                let indent = self.document.insert(&mut self.cursor_position, c);
+                (0..indent+1).for_each(|_| self.move_cursor(Key::Right));
             }
             Key::Delete => self.document.delete(&self.cursor_position),
             Key::Backspace => {
