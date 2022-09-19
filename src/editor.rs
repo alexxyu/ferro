@@ -6,6 +6,7 @@ use std::env;
 use std::time::Duration;
 use std::time::Instant;
 use termion::event::{Event, Key, MouseEvent};
+use unicode_segmentation::UnicodeSegmentation;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 2;
@@ -455,7 +456,13 @@ impl Editor {
             let event = Terminal::read_event()?;
             if let Event::Key(key) = event {
                 match key {
-                    Key::Backspace => result.truncate(result.len().saturating_sub(1)),
+                    Key::Backspace => {
+                        let graphemes_cnt = result.graphemes(true).count();
+                        result = result
+                            .graphemes(true)
+                            .take(graphemes_cnt.saturating_sub(1))
+                            .collect();
+                    }
                     Key::Char('\n') => {
                         self.document.reset_selections();
                         break;
@@ -510,7 +517,13 @@ impl Editor {
             let event = Terminal::read_event()?;
             if let Event::Key(key) = event {
                 match key {
-                    Key::Backspace => result.truncate(result.len().saturating_sub(1)),
+                    Key::Backspace => {
+                        let graphemes_cnt = result.graphemes(true).count();
+                        result = result
+                            .graphemes(true)
+                            .take(graphemes_cnt.saturating_sub(1))
+                            .collect();
+                    }
                     Key::Char('\n') => break,
                     Key::Char(c) => {
                         if !c.is_control() {
