@@ -616,21 +616,30 @@ impl Row {
     ) -> Option<String> {
         if let Some(multiline_comment_delims) = opts.multiline_comments() {
             // Check for presence of possible opening delims for a multiline comment
+            let substring: String = self.string
+                .graphemes(true)
+                .skip(*index)
+                .collect();
             for (opening_delim, closing_delim) in multiline_comment_delims {
-                if let Some(k) = self.string[*index..].find(opening_delim) {
+                if let Some(k) = substring.find(opening_delim) {
                     if k != 0 {
                         continue;
                     }
 
                     // closing_index is the index after the closing delim, or the end of the line (if no closing delim)
                     let mut multiline_is_closed = false;
+                    let substring_after_delim: String = substring
+                        .graphemes(true)
+                        .skip(opening_delim.len())
+                        .collect();
                     let closing_index = 
-                        if let Some(closing_index) = self.string[*index + opening_delim.len()..].find(closing_delim) {
+                        if let Some(closing_index) = substring_after_delim.find(closing_delim) {
                             multiline_is_closed = true;
                             *index + opening_delim.len() + closing_index + closing_delim.len()
                         } else {
                             chars.len()
                         };
+
                     for _ in *index..closing_index {
                         self.highlighting.push(highlighting::Type::MultilineComment);
                         *index += 1;
