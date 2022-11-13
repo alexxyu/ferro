@@ -1,8 +1,8 @@
-# Hecto
+# Ferro
 
 A lightweight text editor built in Rust.
 
-Based on [Philipp Flenker's](https://www.philippflenker.com/hecto/) Rust tutorial.
+Based on [Philipp Flenker's](https://www.philippflenker.com/hecto/) Rust text editor tutorial.
 
 ## Features
 

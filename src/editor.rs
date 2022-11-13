@@ -52,9 +52,9 @@ struct StatusMessage {
 
 impl StatusMessage {
     /// Constructs a [StatusMessage] from a string
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `message` - the status message's string content
     fn from(message: String) -> Self {
         Self {
@@ -118,7 +118,7 @@ impl Editor {
     }
 
     /// Runs the editor.
-    /// 
+    ///
     /// This is essentially an event loop and should only ever be called once.
     pub fn run(&mut self) {
         loop {
@@ -137,7 +137,7 @@ impl Editor {
     }
 
     /// Re-renders the terminal screen.
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered
@@ -253,7 +253,7 @@ impl Editor {
 
     /// Draws a welcome message in the middle of the editor.
     fn draw_welcome_message(&self) {
-        let mut welcome_message = format!("Hecto editor -- version {}", VERSION);
+        let mut welcome_message = format!("Ferro editor -- version {}", VERSION);
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
         let padding = width.saturating_sub(len) / 2;
@@ -339,7 +339,7 @@ impl Editor {
     }
 
     /// Processes an event (i.e. a keypress or a mousepress).
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered while reading event
@@ -353,11 +353,11 @@ impl Editor {
     }
 
     /// Processes a keypress event.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `keypress` - the [Key] that was pressed
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered
@@ -379,7 +379,7 @@ impl Editor {
             Key::Ctrl('l') => self.search(),
             Key::Char(c) => {
                 let indent = self.document.insert(&mut self.cursor_position, c);
-                (0..indent+1).for_each(|_| self.move_cursor(Key::Right));
+                (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
             }
             Key::Delete => self.document.delete(&self.cursor_position),
             Key::Backspace => {
@@ -388,18 +388,8 @@ impl Editor {
                     self.document.delete(&self.cursor_position);
                 }
             }
-            POS_UP
-            | POS_DOWN
-            | POS_LEFT
-            | POS_RIGHT
-            | WORD_LEFT
-            | WORD_RIGHT
-            | LINE_LEFT
-            | LINE_RIGHT
-            | PAGE_UP
-            | PAGE_DOWN
-            | DOC_UP 
-            | DOC_DOWN => self.move_cursor(keypress),
+            POS_UP | POS_DOWN | POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT
+            | LINE_RIGHT | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => self.move_cursor(keypress),
             _ => (),
         }
 
@@ -412,11 +402,11 @@ impl Editor {
     }
 
     /// Processes a mousepress event.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `mousepress` - the [MouseEvent] that occurred
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered
@@ -436,12 +426,12 @@ impl Editor {
     }
 
     /// Prompts the user for input.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `prompt` - the prompt to print
     /// * `callback` - the callback to use
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered
@@ -505,7 +495,7 @@ impl Editor {
     }
 
     /// Prompts the user for a string to replace all selections with.
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered
@@ -568,9 +558,9 @@ impl Editor {
     }
 
     /// Moves the cursor based on the key that was pressed.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `key` - The key that was pressed
     fn move_cursor(&mut self, key: Key) {
         let terminal_height = self.terminal.size().height as usize;
@@ -611,14 +601,18 @@ impl Editor {
                 }
             }
             WORD_LEFT => {
-                if let Some(pos) = self.document.find_next_word(&self.cursor_position, SearchDirection::Backward)
+                if let Some(pos) = self
+                    .document
+                    .find_next_word(&self.cursor_position, SearchDirection::Backward)
                 {
                     x = pos.x;
                     y = pos.y;
                 }
             }
             WORD_RIGHT => {
-                if let Some(pos) = self.document.find_next_word(&self.cursor_position, SearchDirection::Forward)
+                if let Some(pos) = self
+                    .document
+                    .find_next_word(&self.cursor_position, SearchDirection::Forward)
                 {
                     x = pos.x;
                     y = pos.y;
@@ -639,27 +633,13 @@ impl Editor {
             0
         };
 
-        let is_vertical_control = |k: Key| {
-            match k {
-                POS_UP
-                | POS_DOWN
-                | PAGE_UP
-                | PAGE_DOWN
-                | DOC_UP
-                | DOC_DOWN => true,
-                _ => false
-            }
+        let is_vertical_control = |k: Key| match k {
+            POS_UP | POS_DOWN | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => true,
+            _ => false,
         };
-        let is_horizontal_control = |k: Key| {
-            match k {
-                POS_LEFT
-                | POS_RIGHT
-                | WORD_LEFT
-                | WORD_RIGHT
-                | LINE_LEFT
-                | LINE_RIGHT => true,
-                _ => false
-            }
+        let is_horizontal_control = |k: Key| match k {
+            POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT | LINE_RIGHT => true,
+            _ => false,
         };
 
         if !is_vertical_control(key) || self.max_position.is_none() {
