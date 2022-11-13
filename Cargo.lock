@@ -229,16 +229,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ferro"
-version = "0.3.0"
-dependencies = [
- "lazy_static",
- "termbg",
- "termion",
- "unicode-segmentation",
-]
-
-[[package]]
 name = "futures-channel"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -284,6 +274,16 @@ dependencies = [
  "futures-core",
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "hecto"
+version = "0.3.0"
+dependencies = [
+ "lazy_static",
+ "termbg",
+ "termion",
+ "unicode-segmentation",
 ]
 
 [[package]]
