@@ -36,11 +36,11 @@ impl Document {
     }
 
     /// Creates a Document from the specified file.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `filename` - the path of the file from which the Document is created
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered while attempting to read file
@@ -67,9 +67,9 @@ impl Document {
 
     /// Computes the number of spaces for indentation in the file based on a majority
     /// algorithm.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `rows` - the [Rows](Row) to calculate the indent from
     fn calculate_indent(rows: &Vec<Row>) -> usize {
         let mut indent_counts = HashMap::new();
@@ -93,9 +93,9 @@ impl Document {
     }
 
     /// Inserts a newline character ('\n') at the given position
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the [Position] to insert the newline character at
     fn insert_newline(&mut self, at: &Position) -> usize {
         if at.y > self.rows.len() {
@@ -126,9 +126,9 @@ impl Document {
     }
 
     /// Inserts a character at the given position
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the [Position] to insert the character at
     /// * `c` - the character to insert
     pub fn insert(&mut self, at: &mut Position, c: char) -> usize {
@@ -167,9 +167,9 @@ impl Document {
     }
 
     /// Deletes the character at the given position.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the [Position] to delete the character at
     pub fn delete(&mut self, at: &Position) {
         let len = self.rows.len();
@@ -205,9 +205,9 @@ impl Document {
     }
 
     /// Finds the position of the next occurence of a string within the document.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `query` - the string to find
     /// * `at` - the [Position] to start finding from
     /// * `direction` - the [SearchDirection] to use
@@ -251,11 +251,11 @@ impl Document {
     }
 
     /// Finds the position of the next word in the document.
-    /// 
+    ///
     /// A word is defined as a sequence of alphanumeric characters.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the position to start looking from
     /// * `direction` - the [SearchDirection] to use
     pub fn find_next_word(&self, at: &Position, direction: SearchDirection) -> Option<Position> {
@@ -279,16 +279,19 @@ impl Document {
         if let Some(x) = self.rows[y].find_next_word(at.x, direction) {
             Some(Position { x, y })
         } else if y_next < self.rows.len() && (direction == SearchDirection::Forward || y > 0) {
-            Some(Position { x: x_next, y: y_next })
+            Some(Position {
+                x: x_next,
+                y: y_next,
+            })
         } else {
             None
         }
     }
 
     /// Computes the highlight of all rows in the document.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `word` - the word to highlight, if any
     /// * `until` - the index to stop highlighting at
     pub fn highlight(&mut self, word: &Option<String>, until: Option<usize>) {
@@ -318,9 +321,9 @@ impl Document {
     }
 
     /// Adds a selection in the document.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the position of the selection within the document
     /// * `len` - the length of the selection
     pub fn add_selection(&mut self, at: Position, len: usize) {
@@ -336,9 +339,9 @@ impl Document {
     }
 
     /// Replaces all selections made in the document.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `replace` - the string to replace the selections with
     pub fn replace_selections(&mut self, replace: &Option<String>) {
         self.rows
@@ -353,9 +356,9 @@ impl Document {
     }
 
     /// Gets a row in the document.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the row's index
     pub fn row(&self, index: usize) -> Option<&Row> {
         self.rows.get(index)
@@ -384,14 +387,14 @@ impl Document {
 
 #[cfg(test)]
 mod test {
-    use std::{env, fs, path::PathBuf};
     use crate::{Document, Position, Row, SearchDirection};
+    use std::{env, fs, path::PathBuf};
 
     use super::DEFAULT_SPACES_PER_TAB;
 
     fn row_to_string(row: &Row) -> String {
         String::from_utf8_lossy(row.as_bytes()).to_string()
-    } 
+    }
 
     #[test]
     fn edit() {
@@ -437,7 +440,10 @@ mod test {
             env::var("CARGO_MANIFEST_DIR").unwrap().as_str(),
             "resources",
             "tests",
-            "test_file.txt"].iter().collect();
+            "test_file.txt",
+        ]
+        .iter()
+        .collect();
         let mut doc = Document::open(path.to_str().unwrap()).unwrap();
         let text = fs::read_to_string(path).unwrap();
 
@@ -458,10 +464,9 @@ mod test {
         }
         doc.delete_selections();
 
-        let text_after_delete: String = text.replace(query, "")
-            .split_ascii_whitespace()
-            .collect();
-        let doc_after_delete: String = doc.rows
+        let text_after_delete: String = text.replace(query, "").split_ascii_whitespace().collect();
+        let doc_after_delete: String = doc
+            .rows
             .iter()
             .map(|r| row_to_string(r))
             .collect::<Vec<String>>()
@@ -470,7 +475,9 @@ mod test {
             .collect();
 
         assert_eq!(text_matches, doc_matches);
-        assert!(doc.find(query, &Position { x: 0, y: 0 }, SearchDirection::Forward).is_none());
+        assert!(doc
+            .find(query, &Position { x: 0, y: 0 }, SearchDirection::Forward)
+            .is_none());
         assert_eq!(text_after_delete, doc_after_delete);
     }
 
@@ -486,14 +493,14 @@ mod test {
         next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
         assert_eq!(next_position_opt, Some(Position { x: 4, y: 0 }));
         position = next_position_opt.unwrap();
-        
+
         next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
         assert_eq!(next_position_opt, Some(Position { x: 0, y: 1 }));
         position = next_position_opt.unwrap();
-        
+
         next_position_opt = document.find_next_word(&position, SearchDirection::Backward);
         assert_eq!(next_position_opt, Some(Position { x: 7, y: 0 }));
-        
+
         next_position_opt = document.find_next_word(&position, SearchDirection::Forward);
         assert_eq!(next_position_opt, Some(Position { x: 7, y: 1 }));
     }
@@ -501,7 +508,11 @@ mod test {
     #[test]
     fn indent() {
         let mut document = Document::default();
-        document.rows = vec![Row::from("fn main() {"), Row::from("    println!(\"Hello, World!\")"), Row::from("}")];
+        document.rows = vec![
+            Row::from("fn main() {"),
+            Row::from("    println!(\"Hello, World!\")"),
+            Row::from("}"),
+        ];
 
         let mut position = Position { x: 0, y: 0 };
         assert_eq!(document.rows[0].get_leading_spaces(), None);
@@ -509,8 +520,14 @@ mod test {
         assert_eq!(document.rows[1].get_leading_spaces(), None);
 
         position = Position { x: 0, y: 1 };
-        assert_eq!(document.insert(&mut position, '\t'), DEFAULT_SPACES_PER_TAB - 1);
-        assert_eq!(document.rows[1].get_leading_spaces(), Some(DEFAULT_SPACES_PER_TAB));
+        assert_eq!(
+            document.insert(&mut position, '\t'),
+            DEFAULT_SPACES_PER_TAB - 1
+        );
+        assert_eq!(
+            document.rows[1].get_leading_spaces(),
+            Some(DEFAULT_SPACES_PER_TAB)
+        );
 
         position = Position { x: 7, y: 2 };
         assert_eq!(document.insert(&mut position, '\n'), 4);

@@ -30,7 +30,7 @@ pub enum Type {
 
 impl Type {
     /// Gets the ANSI value representation of a highlighting type to be used for highlight rendering.
-    /// 
+    ///
     /// For more information, a 216-color chart that was used for reference can be found here:
     /// <https://www.web-source.net/216_color_chart.htm>
     pub fn to_color(&self) -> color::AnsiValue {
