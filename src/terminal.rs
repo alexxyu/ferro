@@ -18,7 +18,7 @@ pub struct Terminal {
 
 impl Terminal {
     /// Constructs the default Terminal.
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if unable to get terminal size
@@ -69,9 +69,9 @@ impl Terminal {
     }
 
     /// Sets the cursor position on the terminal screen.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `position` - the cursor position
     pub fn cursor_position(position: &Position) {
         let Position { x, y } = position;
@@ -91,7 +91,7 @@ impl Terminal {
     }
 
     /// Flushes stdout.
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered while flushing stdout
@@ -100,7 +100,7 @@ impl Terminal {
     }
 
     /// Listens for an event from stdin.
-    /// 
+    ///
     /// # Errors
     ///
     /// Will return `Err` if I/O error encountered while reading event

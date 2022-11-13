@@ -22,9 +22,9 @@ pub struct Row {
 
 impl Row {
     /// Replaces all tabs in the row with spaces.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `spaces_per_tab` - the number of spaces each tab is replaced iwth
     pub fn replace_tabs_with_spaces(&mut self, spaces_per_tab: usize) {
         self.string = self
@@ -33,9 +33,9 @@ impl Row {
     }
 
     /// Renders the row, both the string content of the row and any highlighting.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `start` - the index to start rendering from
     /// * `end` - the index to stop rendering at
     pub fn render(&self, start: usize, end: usize) -> String {
@@ -77,9 +77,9 @@ impl Row {
     }
 
     /// Inserts a character at the given position in the row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the position to insert the character at
     /// * `c` - the character to insert
     pub fn insert(&mut self, at: usize, c: char) {
@@ -106,9 +106,9 @@ impl Row {
     }
 
     /// Appends another row to the current row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `other` - the row to append to this row
     pub fn append(&mut self, other: &Self) {
         self.string = format!("{}{}", self.string, other.string);
@@ -116,9 +116,9 @@ impl Row {
     }
 
     /// Deletes the character at the given position in the row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the position of the character in the row to delete
     pub fn delete(&mut self, at: usize) {
         if at < self.len() {
@@ -137,11 +137,11 @@ impl Row {
         }
     }
 
-    /// Splits the row into two halves. Afterward, the current row contains the first half while 
+    /// Splits the row into two halves. Afterward, the current row contains the first half while
     /// the returned row contains the second half.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the index in the row to split at
     pub fn split(&mut self, at: usize) -> Self {
         let mut row: String = String::new();
@@ -172,9 +172,9 @@ impl Row {
     }
 
     /// Finds the index of a string within the row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `query` - the string to find
     /// * `at` - the index to start finding from
     /// * `direction` - the [SearchDirection] to use
@@ -220,9 +220,9 @@ impl Row {
     }
 
     /// Finds the index of the next word in the row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the index to start finding from
     /// * `direction` - the [SearchDirection] to use
     pub fn find_next_word(&self, at: usize, direction: SearchDirection) -> Option<usize> {
@@ -234,16 +234,16 @@ impl Row {
     }
 
     /// Finds the index of the next word in the row in the forward direction.
-    /// 
+    ///
     /// The index of the word, if found, will be the index immediately preceding
     /// the start of that word.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `start` - the starting index of the row
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// let row = Row::from("Foo Bar");
     /// assert_eq!(row.find_word_forward(1), Some(4));
@@ -253,10 +253,7 @@ impl Row {
             return None;
         }
 
-        let substring: String = self.string[..]
-            .graphemes(true)
-            .skip(start)
-            .collect();
+        let substring: String = self.string[..].graphemes(true).skip(start).collect();
 
         let mut x_skip = 0;
         if substring.chars().nth(0).unwrap().is_alphanumeric() {
@@ -278,16 +275,16 @@ impl Row {
     }
 
     /// Finds the index of the next word in the row in the backward direction.
-    /// 
+    ///
     /// The index of the word, if found, will be the index immediately following
     /// the end of that word.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `end` - the ending index of the row
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// let row = Row::from("Foo Bar");
     /// assert_eq!(row.find_word_backward(5), Some(3));
@@ -297,10 +294,7 @@ impl Row {
             return None;
         }
 
-        let substring: String = self.string[..]
-            .graphemes(true)
-            .take(end)
-            .collect();
+        let substring: String = self.string[..].graphemes(true).take(end).collect();
 
         if substring.chars().nth_back(0).unwrap().is_alphanumeric() {
             // If the cursor is currently on a word, we need to find the next separator
@@ -321,9 +315,9 @@ impl Row {
     }
 
     /// Replaces all selections made in the row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `replace` - the string to replace the selections with
     pub fn replace_selections(&mut self, word: &Option<String>) {
         if self.selections.len() > 0 {
@@ -362,9 +356,9 @@ impl Row {
     }
 
     /// Adds a selection in this row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `at` - the index of the selection in this row
     /// * `len` - the length of the selection
     pub fn add_selection(&mut self, at: usize, len: usize) {
@@ -378,9 +372,9 @@ impl Row {
     }
 
     /// Checks whether there is a string match in the row to highlight.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `substring` - the string to highlight
     /// * `chars` - the characters in the row
@@ -415,9 +409,9 @@ impl Row {
     }
 
     /// Checks whether there is a keyword to be highlighted.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `chars` - the characters in the row
     /// * `keywords` - the keywords that should be highlighted
@@ -453,9 +447,9 @@ impl Row {
     }
 
     /// Checks whether there is a primary keyword to be highlighted.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
     /// * `chars` - the characters in the row
@@ -474,9 +468,9 @@ impl Row {
     }
 
     /// Checks whether there is a secondary keyword to be highlighted.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
     /// * `chars` - the characters in the row
@@ -495,9 +489,9 @@ impl Row {
     }
 
     /// Highlights any matches in the row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `word` - the word to highlight
     fn highlight_match(&mut self, word: &Option<String>) {
         if let Some(word) = word {
@@ -530,9 +524,9 @@ impl Row {
     }
 
     /// Checks whether there is a character literal to be highlighted.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
     /// * `c` - the character at `chars[index]`
@@ -567,9 +561,9 @@ impl Row {
     }
 
     /// Checks whether there is an inline comment to be highlighted.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
     /// * `_` - the character at `chars[index]`
@@ -600,9 +594,9 @@ impl Row {
 
     /// Checks whether there is a multiline comment to be highlighted in this row. If so,
     /// this function returns the delimiter that closes the multiline comment.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
     /// * `_` - the character at `chars[index]`
@@ -616,10 +610,7 @@ impl Row {
     ) -> Option<String> {
         if let Some(multiline_comment_delims) = opts.multiline_comments() {
             // Check for presence of possible opening delims for a multiline comment
-            let substring: String = self.string
-                .graphemes(true)
-                .skip(*index)
-                .collect();
+            let substring: String = self.string.graphemes(true).skip(*index).collect();
             for (opening_delim, closing_delim) in multiline_comment_delims {
                 if let Some(k) = substring.find(opening_delim) {
                     if k != 0 {
@@ -632,7 +623,7 @@ impl Row {
                         .graphemes(true)
                         .skip(opening_delim.len())
                         .collect();
-                    let closing_index = 
+                    let closing_index =
                         if let Some(closing_index) = substring_after_delim.find(closing_delim) {
                             multiline_is_closed = true;
                             *index + opening_delim.len() + closing_index + closing_delim.len()
@@ -658,9 +649,9 @@ impl Row {
     }
 
     /// Checks whether there is a string literal to be highlighted.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
     /// * `c` - the character at `chars[index]`
@@ -688,21 +679,21 @@ impl Row {
                             break;
                         }
                     }
-        
+
                     self.highlighting.push(highlighting::Type::String);
                     *index += 1;
                     return true;
                 }
             }
         }
-        
+
         false
     }
 
     /// Checks whether there is a number literal to be highlighted.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - the index to check from; this gets updated to the end of the highlight
     /// * `opts` - the [HighlightingOptions] to use
     /// * `c` - the character at `chars[index]`
@@ -741,9 +732,9 @@ impl Row {
     }
 
     /// Computes the highlighting (if any) of every grapheme in this row.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `opts` - the `HighlightingOptions` to use
     /// * `word` - the word to highlight (if any)
     /// * `look_for_multiline_close` - until this delimiter is found, graphemes are highlighted as a multiline comment.
@@ -767,7 +758,7 @@ impl Row {
         // on this line. We don't need to do special highlight checks for anything until that point.
         if let Some(closing_delim) = look_for_multiline_close {
             let mut multiline_is_closed = false;
-            let closing_index = 
+            let closing_index =
                 if let Some(closing_index) = self.string.find(&String::clone(closing_delim)) {
                     multiline_is_closed = true;
                     closing_index + closing_delim.len()
@@ -785,7 +776,9 @@ impl Row {
         }
 
         while let Some(c) = chars.get(index) {
-            if let Some(closing_delim) = self.highlight_multiline_comment(&mut index, opts, *c, &chars) {
+            if let Some(closing_delim) =
+                self.highlight_multiline_comment(&mut index, opts, *c, &chars)
+            {
                 *look_for_multiline_close = Some(closing_delim);
                 continue;
             }
@@ -866,7 +859,7 @@ fn is_separator(c: char) -> bool {
 mod test {
     use crate::highlighting::Type;
     use crate::row::Row;
-    use crate::{SearchDirection, FileType};
+    use crate::{FileType, SearchDirection};
 
     #[test]
     fn basics() {
@@ -940,11 +933,11 @@ mod test {
         assert_eq!(row.find_next_word(5, SearchDirection::Backward), Some(3));
         assert_eq!(row.find_next_word(1, SearchDirection::Backward), Some(0));
         assert_eq!(row.find_next_word(0, SearchDirection::Backward), None);
-        
+
         row = Row::from("my___new_constant");
         assert_eq!(row.find_next_word(0, SearchDirection::Forward), Some(5));
         assert_eq!(row.find_next_word(8, SearchDirection::Backward), Some(2));
-        
+
         row = Row::from("");
         assert_eq!(row.find_next_word(0, SearchDirection::Forward), None);
         assert_eq!(row.find_next_word(0, SearchDirection::Backward), None);
@@ -957,23 +950,40 @@ mod test {
 
         let mut row = Row::from("let foo=3;");
         let mut base = vec![
-            Type::PrimaryKeywords, Type::PrimaryKeywords, Type::PrimaryKeywords,    // let
+            Type::PrimaryKeywords,
+            Type::PrimaryKeywords,
+            Type::PrimaryKeywords, // let
             Type::None,
-            Type::None, Type::None, Type::None,                                     // foo
-            Type::None,                                                             // =
-            Type::Number,                                                           // 3
-            Type::None                                                              // ;
+            Type::None,
+            Type::None,
+            Type::None,   // foo
+            Type::None,   // =
+            Type::Number, // 3
+            Type::None,   // ;
         ];
         let mut look_for_multiline_close = None;
-        row.highlight(&filetype.highlighting_options(), &None, &mut look_for_multiline_close);
+        row.highlight(
+            &filetype.highlighting_options(),
+            &None,
+            &mut look_for_multiline_close,
+        );
         assert!(row.highlighting.eq(&base));
 
         row = Row::from("\"a3\"/*3");
         base = vec![
-            Type::String, Type::String, Type::String, Type::String,                     // "a3"
-            Type::MultilineComment, Type::MultilineComment, Type::MultilineComment      // /*3
+            Type::String,
+            Type::String,
+            Type::String,
+            Type::String, // "a3"
+            Type::MultilineComment,
+            Type::MultilineComment,
+            Type::MultilineComment, // /*3
         ];
-        row.highlight(&filetype.highlighting_options(), &None, &mut look_for_multiline_close);
+        row.highlight(
+            &filetype.highlighting_options(),
+            &None,
+            &mut look_for_multiline_close,
+        );
         assert!(row.highlighting.eq(&base));
         assert!(look_for_multiline_close == Some("*/".to_string()));
     }

@@ -53,9 +53,9 @@ impl Default for FileType {
 
 impl FileType {
     /// Constructs the FileType based on a given filename
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `file_name` - the name of the file
     pub fn from(file_name: &str) -> Self {
         if file_name.ends_with(".rs") {
@@ -66,9 +66,7 @@ impl FileType {
                     characters: true,
                     strings: Some(vec!['"']),
                     comments: Some("//".to_string()),
-                    multiline_comments: Some(vec![
-                        ("/*".to_string(), "*/".to_string()),
-                    ]),
+                    multiline_comments: Some(vec![("/*".to_string(), "*/".to_string())]),
                     primary_keywords: vec![
                         "as".to_string(),
                         "break".to_string(),
@@ -148,9 +146,7 @@ impl FileType {
                     characters: true,
                     strings: Some(vec!['"']),
                     comments: Some("//".to_string()),
-                    multiline_comments: Some(vec![
-                        ("/*".to_string(), "*/".to_string()),
-                    ]),
+                    multiline_comments: Some(vec![("/*".to_string(), "*/".to_string())]),
                     primary_keywords: vec![
                         "abstract".to_string(),
                         "assert".to_string(),
@@ -207,7 +203,7 @@ impl FileType {
                         "short".to_string(),
                     ],
                 },
-            }
+            };
         } else if file_name.ends_with(".py") {
             return Self {
                 name: String::from("Python"),
@@ -259,7 +255,7 @@ impl FileType {
                     ],
                     secondary_keywords: vec![],
                 },
-            }
+            };
         }
 
         Self::default()
