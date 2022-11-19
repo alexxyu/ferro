@@ -2,6 +2,8 @@ use crate::Document;
 use crate::Row;
 use crate::Terminal;
 
+use rayon;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::env;
 use std::time::Duration;
 use std::time::Instant;
@@ -221,38 +223,45 @@ impl Editor {
         }
     }
 
-    /// Draws a given row on the terminal screen.
+    /// Renders a given row on the terminal screen.
     ///
     /// # Arguments
     ///
-    /// * `row` - The row to be drawn
-    pub fn draw_row(&self, row: &Row) {
+    /// * `row` - The row to be rendered
+    pub fn render_row(&self, row: &Row) -> String {
         let width = self.terminal.size().width as usize;
         let start = self.offset.x;
         let end = self.offset.x.saturating_add(width);
         let row = row.render(start, end);
-        println!("{}\r", row);
+        format!("{}\r", row)
     }
 
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
-        for terminal_row in 0..height {
+        let rows: Vec<String> = (0..height)
+            .into_par_iter()
+            .map(|terminal_row| {
+                if let Some(row) = self
+                    .document
+                    .row(self.offset.y.saturating_add(terminal_row as usize))
+                {
+                    self.render_row(row)
+                } else if self.document.is_empty() && terminal_row == height / 3 {
+                    self.render_welcome_message()
+                } else {
+                    format!("~\r")
+                }
+            })
+            .collect();
+
+        for row in rows {
             Terminal::clear_current_line();
-            if let Some(row) = self
-                .document
-                .row(self.offset.y.saturating_add(terminal_row as usize))
-            {
-                self.draw_row(row);
-            } else if self.document.is_empty() && terminal_row == height / 3 {
-                self.draw_welcome_message();
-            } else {
-                println!("~\r");
-            }
+            println!("{}", row);
         }
     }
 
-    /// Draws a welcome message in the middle of the editor.
-    fn draw_welcome_message(&self) {
+    /// Renders a welcome message in the middle of the editor.
+    fn render_welcome_message(&self) -> String {
         let mut welcome_message = format!("Ferro editor -- version {}", VERSION);
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
@@ -260,7 +269,7 @@ impl Editor {
         let spaces = " ".repeat(padding.saturating_sub(1));
         welcome_message = format!("~{}{}", spaces, welcome_message);
         welcome_message.truncate(width);
-        println!("{}\r", welcome_message);
+        format!("{}\r", welcome_message)
     }
 
     /// Saves the document being edited.
