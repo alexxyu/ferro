@@ -364,6 +364,36 @@ impl Document {
         self.rows.get(index)
     }
 
+    pub fn get_contents(&self, start: Position, end: Position) -> String {
+        let Position {
+            y: start_y,
+            x: start_x,
+        } = start;
+        let Position { y: end_y, x: end_x } = end;
+
+        let mut b = vec![];
+
+        // TODO: Should stop mixing bytes and strings...
+        for r in start_y..(end_y + 1) {
+            if let Some(row) = self.rows.get(r) {
+                let mut row_contents = row.as_bytes();
+                if r == end_y {
+                    row_contents = &row_contents[..end_x];
+                }
+
+                b.append(&mut row_contents.to_vec());
+                b.push(b'\n');
+            }
+        }
+
+        String::from_utf8(b)
+            .unwrap_or("".into())
+            .as_str()
+            .chars()
+            .skip(start_x)
+            .collect::<String>()
+    }
+
     /// Gets the number of rows in the document.
     pub fn len(&self) -> usize {
         self.rows.len()

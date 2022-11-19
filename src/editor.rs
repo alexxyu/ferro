@@ -1,5 +1,4 @@
-use crate::commands::Command;
-use crate::commands::{copy::CopyCommand, paste::PasteCommand};
+use crate::commands::{copy::CopyCommand, paste::PasteCommand, Command};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -27,7 +26,16 @@ const PAGE_DOWN: Key = Key::Alt('g');
 const DOC_UP: Key = Key::Home;
 const DOC_DOWN: Key = Key::End;
 
-const SELECT_RIGHT: Key = Key::Alt('r');
+// Key mappings for control
+const QUIT: Key = Key::Ctrl('q');
+const SAVE: Key = Key::Ctrl('s');
+const SEARCH: Key = Key::Ctrl('l');
+const SELECT_FORWARD: Key = Key::Ctrl('f');
+const SELECT_BACKWARD: Key = Key::Ctrl('b');
+const DELETE_SELECTIONS: Key = Key::Ctrl('d');
+const REPLACE_SELECTIONS: Key = Key::Ctrl('r');
+const START_SELECT: Key = Key::Ctrl('t');
+const END_SELECT: Key = Key::Ctrl('y');
 const COPY: Key = Key::Ctrl('c');
 const PASTE: Key = Key::Ctrl('p');
 
@@ -54,6 +62,11 @@ pub struct Position {
 struct StatusMessage {
     text: String,
     time: Instant,
+}
+
+struct Selection {
+    start: Position,
+    end: Position,
 }
 
 impl StatusMessage {
@@ -91,9 +104,9 @@ pub struct Editor {
     /// The word to be highlighted, if any
     highlighted_word: Option<String>,
     /// Current selection, if any
-    pub selection: Option<String>,
+    selection: Option<Selection>,
     /// Clipboard contents, if any
-    pub clipboard: Option<String>,
+    clipboard: Option<String>,
 }
 
 impl Editor {
@@ -304,7 +317,7 @@ impl Editor {
                 |editor, key, query| {
                     let mut moved = false;
                     match key {
-                        Key::Ctrl('f') => {
+                        SELECT_FORWARD => {
                             editor
                                 .document
                                 .add_selection(editor.cursor_position, query.len());
@@ -317,7 +330,7 @@ impl Editor {
                             editor.move_cursor(Key::Right);
                             moved = true;
                         }
-                        Key::Ctrl('b') => {
+                        SELECT_BACKWARD => {
                             editor
                                 .document
                                 .add_selection(editor.cursor_position, query.len());
@@ -375,7 +388,7 @@ impl Editor {
     /// Will return `Err` if I/O error encountered
     fn process_keypress(&mut self, keypress: Key) -> Result<(), std::io::Error> {
         match keypress {
-            Key::Ctrl('q') => {
+            QUIT => {
                 if self.quit_times > 0 && self.document.is_dirty() {
                     self.status_message = StatusMessage::from(format!(
                         "WARNING! File has unsaved changes. Press Ctrl-Q {} more time(s) to quit.",
@@ -389,8 +402,22 @@ impl Editor {
             }
             COPY => CopyCommand::execute(self),
             PASTE => PasteCommand::execute(self),
-            Key::Ctrl('s') => self.save(),
-            Key::Ctrl('l') => self.search(),
+            SAVE => self.save(),
+            SEARCH => self.search(),
+            START_SELECT => {
+                self.selection = Some(Selection {
+                    start: self.cursor_position,
+                    end: self.cursor_position,
+                });
+            }
+            END_SELECT => {
+                if let Some(Selection { start, end: _ }) = self.selection {
+                    self.selection = Some(Selection {
+                        start,
+                        end: self.cursor_position,
+                    });
+                }
+            }
             Key::Char(c) => {
                 let indent = self.document.insert(&mut self.cursor_position, c);
                 (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
@@ -403,9 +430,7 @@ impl Editor {
                 }
             }
             POS_UP | POS_DOWN | POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT
-            | LINE_RIGHT | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN | SELECT_RIGHT => {
-                self.move_cursor(keypress)
-            }
+            | LINE_RIGHT | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => self.move_cursor(keypress),
             _ => (),
         }
 
@@ -478,11 +503,11 @@ impl Editor {
                             result.push(c);
                         }
                     }
-                    Key::Ctrl('d') => {
+                    DELETE_SELECTIONS => {
                         self.document.delete_selections();
                         break;
                     }
-                    Key::Ctrl('r') => {
+                    REPLACE_SELECTIONS => {
                         let replacement = self.prompt_replacement()?;
                         if replacement.is_some() {
                             self.document.replace_selections(&replacement);
@@ -573,10 +598,17 @@ impl Editor {
         }
     }
 
+    /// Copies the selection into the clipboard
+    pub fn copy(&mut self) {
+        if let Some(Selection { start, end }) = self.selection {
+            self.clipboard = Some(self.document.get_contents(start, end));
+        }
+    }
+
     /// Pastes the clipboard contents
     pub fn paste(&mut self) {
         if let Some(content) = &self.clipboard {
-            for c in content[..].chars() {
+            for c in content[..].chars().rev() {
                 self.document.insert(&mut self.cursor_position, c);
             }
         }
@@ -623,23 +655,6 @@ impl Editor {
                 } else if y < height {
                     y += 1;
                     x = 0;
-                }
-            }
-            SELECT_RIGHT => {
-                if x < width {
-                    x += 1;
-                } else if y < height {
-                    y += 1;
-                    x = 0;
-                }
-
-                if self.selection.is_none() {
-                    self.selection = Some("".into());
-                }
-
-                eprintln!("{:?}", self.selection);
-                if let Some(select) = &self.selection {
-                    self.selection = Some(format!("{}{}", select, 'a'));
                 }
             }
             WORD_LEFT => {
