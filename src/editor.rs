@@ -13,31 +13,31 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 2;
 
 // Key mappings for navigation
-const POS_UP: Key = Key::Up;
-const POS_DOWN: Key = Key::Down;
-const POS_LEFT: Key = Key::Left;
-const POS_RIGHT: Key = Key::Right;
-const WORD_LEFT: Key = Key::Alt('q');
-const WORD_RIGHT: Key = Key::Alt('w');
-const LINE_LEFT: Key = Key::Alt('b');
-const LINE_RIGHT: Key = Key::Alt('f');
-const PAGE_UP: Key = Key::Alt('t');
-const PAGE_DOWN: Key = Key::Alt('g');
-const DOC_UP: Key = Key::Home;
-const DOC_DOWN: Key = Key::End;
+const KEY_POS_UP: Key = Key::Up;
+const KEY_POS_DOWN: Key = Key::Down;
+const KEY_POS_LEFT: Key = Key::Left;
+const KEY_POS_RIGHT: Key = Key::Right;
+const KEY_WORD_LEFT: Key = Key::Alt('q');
+const KEY_WORD_RIGHT: Key = Key::Alt('w');
+const KEY_LINE_LEFT: Key = Key::Alt('b');
+const KEY_LINE_RIGHT: Key = Key::Alt('f');
+const KEY_PAGE_UP: Key = Key::Alt('t');
+const KEY_PAGE_DOWN: Key = Key::Alt('g');
+const KEY_DOC_UP: Key = Key::Home;
+const KEY_DOC_DOWN: Key = Key::End;
 
 // Key mappings for control
-const QUIT: Key = Key::Ctrl('q');
-const SAVE: Key = Key::Ctrl('s');
-const SEARCH: Key = Key::Ctrl('l');
-const SELECT_FORWARD: Key = Key::Ctrl('f');
-const SELECT_BACKWARD: Key = Key::Ctrl('b');
-const DELETE_SELECTIONS: Key = Key::Ctrl('d');
-const REPLACE_SELECTIONS: Key = Key::Ctrl('r');
-const START_SELECT: Key = Key::Ctrl('t');
-const END_SELECT: Key = Key::Ctrl('y');
-const COPY: Key = Key::Ctrl('c');
-const PASTE: Key = Key::Ctrl('p');
+const KEY_QUIT: Key = Key::Ctrl('q');
+const KEY_SAVE: Key = Key::Ctrl('s');
+const KEY_SEARCH: Key = Key::Ctrl('l');
+const KEY_SELECT_FORWARD: Key = Key::Ctrl('f');
+const KEY_SELECT_BACKWARD: Key = Key::Ctrl('b');
+const KEY_DELETE_SELECTIONS: Key = Key::Ctrl('d');
+const KEY_REPLACE_SELECTIONS: Key = Key::Ctrl('r');
+const KEY_START_SELECT: Key = Key::Ctrl('t');
+const KEY_END_SELECT: Key = Key::Ctrl('y');
+const KEY_COPY: Key = Key::Ctrl('c');
+const KEY_PASTE: Key = Key::Ctrl('p');
 
 fn die(e: &std::io::Error) {
     Terminal::clear_screen();
@@ -317,7 +317,7 @@ impl Editor {
                 |editor, key, query| {
                     let mut moved = false;
                     match key {
-                        SELECT_FORWARD => {
+                        KEY_SELECT_FORWARD => {
                             editor
                                 .document
                                 .add_selection(editor.cursor_position, query.len());
@@ -325,18 +325,18 @@ impl Editor {
                             editor.move_cursor(Key::Right);
                             moved = true;
                         }
-                        POS_RIGHT | POS_DOWN => {
+                        KEY_POS_RIGHT | KEY_POS_DOWN => {
                             direction = SearchDirection::Forward;
                             editor.move_cursor(Key::Right);
                             moved = true;
                         }
-                        SELECT_BACKWARD => {
+                        KEY_SELECT_BACKWARD => {
                             editor
                                 .document
                                 .add_selection(editor.cursor_position, query.len());
                             direction = SearchDirection::Backward;
                         }
-                        POS_LEFT | POS_UP => direction = SearchDirection::Backward,
+                        KEY_POS_LEFT | KEY_POS_UP => direction = SearchDirection::Backward,
                         _ => (),
                     }
 
@@ -388,7 +388,7 @@ impl Editor {
     /// Will return `Err` if I/O error encountered
     fn process_keypress(&mut self, keypress: Key) -> Result<(), std::io::Error> {
         match keypress {
-            QUIT => {
+            KEY_QUIT => {
                 if self.quit_times > 0 && self.document.is_dirty() {
                     self.status_message = StatusMessage::from(format!(
                         "WARNING! File has unsaved changes. Press Ctrl-Q {} more time(s) to quit.",
@@ -400,17 +400,17 @@ impl Editor {
 
                 self.should_quit = true;
             }
-            COPY => CopyCommand::execute(self),
-            PASTE => PasteCommand::execute(self),
-            SAVE => self.save(),
-            SEARCH => self.search(),
-            START_SELECT => {
+            KEY_COPY => CopyCommand::execute(self),
+            KEY_PASTE => PasteCommand::execute(self),
+            KEY_SAVE => self.save(),
+            KEY_SEARCH => self.search(),
+            KEY_START_SELECT => {
                 self.selection = Some(Selection {
                     start: self.cursor_position,
                     end: self.cursor_position,
                 });
             }
-            END_SELECT => {
+            KEY_END_SELECT => {
                 if let Some(Selection { start, end: _ }) = self.selection {
                     self.selection = Some(Selection {
                         start,
@@ -429,8 +429,9 @@ impl Editor {
                     self.document.delete(&self.cursor_position);
                 }
             }
-            POS_UP | POS_DOWN | POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT
-            | LINE_RIGHT | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => self.move_cursor(keypress),
+            KEY_POS_UP | KEY_POS_DOWN | KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT
+            | KEY_WORD_RIGHT | KEY_LINE_LEFT | KEY_LINE_RIGHT | KEY_PAGE_UP | KEY_PAGE_DOWN
+            | KEY_DOC_UP | KEY_DOC_DOWN => self.move_cursor(keypress),
             _ => (),
         }
 
@@ -503,11 +504,11 @@ impl Editor {
                             result.push(c);
                         }
                     }
-                    DELETE_SELECTIONS => {
+                    KEY_DELETE_SELECTIONS => {
                         self.document.delete_selections();
                         break;
                     }
-                    REPLACE_SELECTIONS => {
+                    KEY_REPLACE_SELECTIONS => {
                         let replacement = self.prompt_replacement()?;
                         if replacement.is_some() {
                             self.document.replace_selections(&replacement);
@@ -631,13 +632,13 @@ impl Editor {
         };
 
         match key {
-            POS_UP => y = y.saturating_sub(1),
-            POS_DOWN => {
+            KEY_POS_UP => y = y.saturating_sub(1),
+            KEY_POS_DOWN => {
                 if y < height {
                     y = y.saturating_add(1);
                 }
             }
-            POS_LEFT => {
+            KEY_POS_LEFT => {
                 if x > 0 {
                     x -= 1;
                 } else if y > 0 {
@@ -649,7 +650,7 @@ impl Editor {
                     }
                 }
             }
-            POS_RIGHT => {
+            KEY_POS_RIGHT => {
                 if x < width {
                     x += 1;
                 } else if y < height {
@@ -657,7 +658,7 @@ impl Editor {
                     x = 0;
                 }
             }
-            WORD_LEFT => {
+            KEY_WORD_LEFT => {
                 if let Some(pos) = self
                     .document
                     .find_next_word(&self.cursor_position, SearchDirection::Backward)
@@ -666,7 +667,7 @@ impl Editor {
                     y = pos.y;
                 }
             }
-            WORD_RIGHT => {
+            KEY_WORD_RIGHT => {
                 if let Some(pos) = self
                     .document
                     .find_next_word(&self.cursor_position, SearchDirection::Forward)
@@ -675,12 +676,12 @@ impl Editor {
                     y = pos.y;
                 }
             }
-            LINE_LEFT => x = 0,
-            LINE_RIGHT => x = width,
-            PAGE_UP => y = y.saturating_sub(terminal_height),
-            PAGE_DOWN => y = y.saturating_add(terminal_height).min(height),
-            DOC_UP => y = 0,
-            DOC_DOWN => y = height,
+            KEY_LINE_LEFT => x = 0,
+            KEY_LINE_RIGHT => x = width,
+            KEY_PAGE_UP => y = y.saturating_sub(terminal_height),
+            KEY_PAGE_DOWN => y = y.saturating_add(terminal_height).min(height),
+            KEY_DOC_UP => y = 0,
+            KEY_DOC_DOWN => y = height,
             _ => (),
         }
 
@@ -691,11 +692,14 @@ impl Editor {
         };
 
         let is_vertical_control = |k: Key| match k {
-            POS_UP | POS_DOWN | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => true,
+            KEY_POS_UP | KEY_POS_DOWN | KEY_PAGE_UP | KEY_PAGE_DOWN | KEY_DOC_UP | KEY_DOC_DOWN => {
+                true
+            }
             _ => false,
         };
         let is_horizontal_control = |k: Key| match k {
-            POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT | LINE_RIGHT => true,
+            KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT | KEY_WORD_RIGHT | KEY_LINE_LEFT
+            | KEY_LINE_RIGHT => true,
             _ => false,
         };
 
