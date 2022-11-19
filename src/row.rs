@@ -425,7 +425,7 @@ impl Row {
     ) -> bool {
         if *index > 0 {
             let prev_char = chars[*index - 1];
-            if !is_separator(prev_char) {
+            if !prev_char.is_ascii_whitespace() {
                 return false;
             }
         }
