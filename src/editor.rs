@@ -1,3 +1,5 @@
+use crate::commands::Command;
+use crate::commands::{copy::CopyCommand, paste::PasteCommand};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -24,6 +26,10 @@ const PAGE_UP: Key = Key::Alt('t');
 const PAGE_DOWN: Key = Key::Alt('g');
 const DOC_UP: Key = Key::Home;
 const DOC_DOWN: Key = Key::End;
+
+const SELECT_RIGHT: Key = Key::Alt('r');
+const COPY: Key = Key::Ctrl('c');
+const PASTE: Key = Key::Ctrl('p');
 
 fn die(e: &std::io::Error) {
     Terminal::clear_screen();
@@ -84,6 +90,10 @@ pub struct Editor {
     quit_times: u8,
     /// The word to be highlighted, if any
     highlighted_word: Option<String>,
+    /// Current selection, if any
+    pub selection: Option<String>,
+    /// Clipboard contents, if any
+    pub clipboard: Option<String>,
 }
 
 impl Editor {
@@ -114,6 +124,8 @@ impl Editor {
             status_message: StatusMessage::from(initial_status),
             quit_times: QUIT_TIMES,
             highlighted_word: None,
+            selection: None,
+            clipboard: None,
         }
     }
 
@@ -375,6 +387,8 @@ impl Editor {
 
                 self.should_quit = true;
             }
+            COPY => CopyCommand::execute(self),
+            PASTE => PasteCommand::execute(self),
             Key::Ctrl('s') => self.save(),
             Key::Ctrl('l') => self.search(),
             Key::Char(c) => {
@@ -389,7 +403,9 @@ impl Editor {
                 }
             }
             POS_UP | POS_DOWN | POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT
-            | LINE_RIGHT | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => self.move_cursor(keypress),
+            | LINE_RIGHT | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN | SELECT_RIGHT => {
+                self.move_cursor(keypress)
+            }
             _ => (),
         }
 
@@ -557,6 +573,15 @@ impl Editor {
         }
     }
 
+    /// Pastes the clipboard contents
+    pub fn paste(&mut self) {
+        if let Some(content) = &self.clipboard {
+            for c in content[..].chars() {
+                self.document.insert(&mut self.cursor_position, c);
+            }
+        }
+    }
+
     /// Moves the cursor based on the key that was pressed.
     ///
     /// # Arguments
@@ -598,6 +623,23 @@ impl Editor {
                 } else if y < height {
                     y += 1;
                     x = 0;
+                }
+            }
+            SELECT_RIGHT => {
+                if x < width {
+                    x += 1;
+                } else if y < height {
+                    y += 1;
+                    x = 0;
+                }
+
+                if self.selection.is_none() {
+                    self.selection = Some("".into());
+                }
+
+                eprintln!("{:?}", self.selection);
+                if let Some(select) = &self.selection {
+                    self.selection = Some(format!("{}{}", select, 'a'));
                 }
             }
             WORD_LEFT => {
