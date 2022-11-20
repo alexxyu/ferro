@@ -196,7 +196,7 @@ impl Document {
             let mut file = fs::File::create(filename)?;
             self.file_type = FileType::from(filename);
             for row in &mut self.rows {
-                file.write_all(row.as_bytes())?;
+                file.write_all(row.to_string().as_bytes())?;
                 file.write_all(b"\n")?;
             }
             self.dirty = false;
@@ -371,26 +371,22 @@ impl Document {
         } = start;
         let Position { y: end_y, x: end_x } = end;
 
-        let mut b = vec![];
-
-        // TODO: Should stop mixing bytes and strings...
-        for r in start_y..(end_y + 1) {
-            if let Some(row) = self.rows.get(r) {
-                let mut row_contents = row.as_bytes();
-                if r == end_y {
-                    row_contents = &row_contents[..end_x];
+        (start_y..(end_y + 1))
+            .map(|r| {
+                if let Some(row) = self.rows.get(r) {
+                    let row_contents = row.to_string();
+                    if r == start_y {
+                        let s: String = row_contents[start_x..].into();
+                        format!("{}\n", s)
+                    } else if r == end_y {
+                        row_contents[..end_x].into()
+                    } else {
+                        format!("{}\n", row_contents)
+                    }
+                } else {
+                    "\n".into()
                 }
-
-                b.append(&mut row_contents.to_vec());
-                b.push(b'\n');
-            }
-        }
-
-        String::from_utf8(b)
-            .unwrap_or("".into())
-            .as_str()
-            .chars()
-            .skip(start_x)
+            })
             .collect::<String>()
     }
 
@@ -422,10 +418,6 @@ mod test {
 
     use super::DEFAULT_SPACES_PER_TAB;
 
-    fn row_to_string(row: &Row) -> String {
-        String::from_utf8_lossy(row.as_bytes()).to_string()
-    }
-
     #[test]
     fn edit() {
         let mut doc = Document::default();
@@ -438,7 +430,7 @@ mod test {
 
         doc.delete(&pos);
         pos = Position { x: 0, y: 0 };
-        assert!(row_to_string(&doc.rows[0]).is_empty());
+        assert!(&doc.rows[0].to_string().is_empty());
 
         let input = "Hello, World!";
         let split_idx = 7;
@@ -448,20 +440,20 @@ mod test {
         }
 
         assert_eq!(doc.len(), 1);
-        assert_eq!(row_to_string(&doc.rows[0]), input);
+        assert_eq!(&doc.rows[0].to_string(), input);
         assert_eq!(pos.x, input.len());
         assert_eq!(pos.y, 0);
 
         let (a, b) = input.split_at(split_idx);
         assert_eq!(doc.insert(&mut Position { x: split_idx, y: 0 }, '\n'), 0);
         assert_eq!(doc.len(), 2);
-        assert_eq!(row_to_string(&doc.rows[0]), a);
-        assert_eq!(row_to_string(&doc.rows[1]), b);
+        assert_eq!(&doc.rows[0].to_string(), a);
+        assert_eq!(&doc.rows[1].to_string(), b);
 
         assert_eq!(doc.insert(&mut Position { x: b.len(), y: 1 }, '\n'), 0);
         assert_eq!(doc.len(), 3);
-        assert_eq!(row_to_string(&doc.rows[1]), b);
-        assert_eq!(row_to_string(&doc.rows[2]), "");
+        assert_eq!(&doc.rows[1].to_string(), b);
+        assert_eq!(&doc.rows[2].to_string(), "");
     }
 
     #[test]
@@ -498,7 +490,7 @@ mod test {
         let doc_after_delete: String = doc
             .rows
             .iter()
-            .map(|r| row_to_string(r))
+            .map(|r| r.to_string())
             .collect::<Vec<String>>()
             .join("\n")
             .split_ascii_whitespace()

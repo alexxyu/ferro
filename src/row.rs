@@ -817,11 +817,6 @@ impl Row {
         self.len == 0
     }
 
-    /// Gets the row's contents as bytes.
-    pub fn as_bytes(&self) -> &[u8] {
-        self.string.as_bytes()
-    }
-
     /// Gets the number of leading spaces in the row.
     pub fn get_leading_spaces(&self) -> Option<usize> {
         let mut index = 0;
@@ -836,6 +831,12 @@ impl Row {
         } else {
             Some(index)
         };
+    }
+}
+
+impl ToString for Row {
+    fn to_string(&self) -> String {
+        self.string.clone()
     }
 }
 
