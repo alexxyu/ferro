@@ -371,7 +371,15 @@ impl Document {
         } = start;
         let Position { y: end_y, x: end_x } = end;
 
-        (start_y..(end_y + 1))
+        if start_y == end_y {
+            if let Some(row) = self.rows.get(start_y) {
+                return row.to_string()[start_x..end_x].into();
+            } else {
+                return "".into();
+            }
+        }
+
+        (start_y..=end_y)
             .map(|r| {
                 if let Some(row) = self.rows.get(r) {
                     let row_contents = row.to_string();
