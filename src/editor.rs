@@ -3,7 +3,10 @@ use crate::Document;
 use crate::Row;
 use crate::Terminal;
 
+use bounded_vec_deque::BoundedVecDeque;
+use std::cell::RefCell;
 use std::env;
+use std::rc::Rc;
 use std::time::Duration;
 use std::time::Instant;
 use termion::event::{Event, Key, MouseEvent};
@@ -11,6 +14,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 2;
+const HISTORY_LIMIT: usize = 10;
 
 // Key mappings for navigation
 const KEY_POS_UP: Key = Key::Up;
@@ -37,7 +41,8 @@ const KEY_REPLACE_SELECTIONS: Key = Key::Ctrl('r');
 const KEY_START_SELECT: Key = Key::Ctrl('t');
 const KEY_END_SELECT: Key = Key::Ctrl('y');
 const KEY_COPY: Key = Key::Ctrl('c');
-const KEY_PASTE: Key = Key::Ctrl('p');
+const KEY_PASTE: Key = Key::Ctrl('v');
+const KEY_UNDO: Key = Key::Ctrl('u');
 
 fn die(e: &std::io::Error) {
     Terminal::clear_screen();
@@ -107,6 +112,8 @@ pub struct Editor {
     selection: Option<Selection>,
     /// Clipboard contents, if any
     clipboard: Option<String>,
+    /// History of commands
+    command_history: BoundedVecDeque<Rc<RefCell<dyn Command>>>,
 }
 
 impl Editor {
@@ -139,6 +146,7 @@ impl Editor {
             highlighted_word: None,
             selection: None,
             clipboard: None,
+            command_history: BoundedVecDeque::new(HISTORY_LIMIT),
         }
     }
 
@@ -400,8 +408,21 @@ impl Editor {
 
                 self.should_quit = true;
             }
-            KEY_COPY => CopyCommand::execute(self),
-            KEY_PASTE => PasteCommand::execute(self),
+            KEY_COPY => CopyCommand::new().execute(self),
+            KEY_PASTE => {
+                let command = PasteCommand::new(self.cursor_position, self.clipboard.clone());
+                self.command_history
+                    .push_back(Rc::new(RefCell::new(command)));
+
+                let command_clone = self.command_history.back().unwrap().clone();
+                command_clone.borrow_mut().execute(self);
+            }
+            KEY_UNDO => {
+                if let Some(command) = self.command_history.pop_back() {
+                    let command_clone = command.clone();
+                    command_clone.borrow_mut().undo(self);
+                }
+            }
             KEY_SAVE => self.save(),
             KEY_SEARCH => self.search(),
             KEY_START_SELECT => {
@@ -606,13 +627,31 @@ impl Editor {
         }
     }
 
-    /// Pastes the clipboard contents
-    pub fn paste(&mut self) {
-        if let Some(content) = &self.clipboard {
+    /// Pastes clipboard contents at the specified position
+    ///
+    /// # Arguments
+    ///
+    /// * `at` - the position at which to paste
+    /// * `clipboard` - the clipboard contents to paste
+    pub fn paste(&mut self, at: &Position, clipboard: &Option<String>) {
+        if let Some(content) = &clipboard {
+            let mut pos = at.clone();
             for c in content[..].chars().rev() {
-                self.document.insert(&mut self.cursor_position, c);
+                self.document.insert(&mut pos, c);
             }
         }
+    }
+
+    /// Undoes a paste operation
+    ///
+    /// # Arguments
+    ///
+    /// * `at` - the position at which to undo paste
+    /// * `n_chars_to_delete` - the number of characters to delete from the position
+    pub fn undo_paste(&mut self, at: &Position, n_chars_to_delete: usize) {
+        (0..n_chars_to_delete).for_each(|_| {
+            self.document.delete(&at);
+        });
     }
 
     /// Moves the cursor based on the key that was pressed.

@@ -1,9 +1,9 @@
+use crate::editor::Editor;
+
 pub mod copy;
 pub mod paste;
 
-use crate::Editor;
-
 pub trait Command {
-    fn execute(editor: &mut Editor);
-    fn undo(editor: &mut Editor);
+    fn execute(&mut self, editor: &mut Editor);
+    fn undo(&mut self, editor: &mut Editor);
 }

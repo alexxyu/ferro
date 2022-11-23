@@ -1,17 +1,28 @@
 use super::Command;
-use crate::Editor;
+use crate::{Editor, Position};
 
 pub struct PasteCommand {
-    // TODO: keep backup for undo
-    _backup: String,
+    position: Position,
+    clipboard: Option<String>,
+}
+
+impl PasteCommand {
+    pub fn new(position: Position, clipboard: Option<String>) -> Self {
+        PasteCommand {
+            position,
+            clipboard,
+        }
+    }
 }
 
 impl Command for PasteCommand {
-    fn execute(editor: &mut Editor) {
-        editor.paste();
+    fn execute(&mut self, editor: &mut Editor) {
+        editor.paste(&self.position, &self.clipboard);
     }
 
-    fn undo(_editor: &mut Editor) {
-        // editor.restore_from_backup();
+    fn undo(&mut self, editor: &mut Editor) {
+        if let Some(clipboard_contents) = &self.clipboard {
+            editor.undo_paste(&self.position, clipboard_contents.len());
+        }
     }
 }
