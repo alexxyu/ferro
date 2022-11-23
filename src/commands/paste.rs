@@ -18,6 +18,12 @@ impl PasteCommand {
 impl Command for PasteCommand {
     fn execute(&mut self, editor: &mut Editor) {
         editor.paste(&self.position, &self.clipboard);
+        let clipboard_length = if let Some(clipboard_contents) = &self.clipboard {
+            clipboard_contents.len()
+        } else {
+            0
+        };
+        editor.set_status_message(format!("Pasted {} characters.", clipboard_length));
     }
 
     fn undo(&mut self, editor: &mut Editor) {

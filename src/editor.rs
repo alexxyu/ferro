@@ -57,10 +57,26 @@ pub enum SearchDirection {
 }
 
 /// A position represented by (x, y) coordinates.
-#[derive(Default, Copy, Clone, PartialEq, Debug)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
+}
+
+impl Ord for Position {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.y == other.y {
+            self.x.cmp(&other.x)
+        } else {
+            self.y.cmp(&other.y)
+        }
+    }
+}
+
+impl PartialOrd for Position {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 /// A status message printed at the bottom of the editor.
@@ -69,7 +85,7 @@ struct StatusMessage {
     time: Instant,
 }
 
-struct Selection {
+pub struct Selection {
     start: Position,
     end: Position,
 }
@@ -109,9 +125,9 @@ pub struct Editor {
     /// The word to be highlighted, if any
     highlighted_word: Option<String>,
     /// Current selection, if any
-    selection: Option<Selection>,
+    pub selection: Option<Selection>,
     /// Clipboard contents, if any
-    clipboard: Option<String>,
+    pub clipboard: Option<String>,
     /// History of commands
     command_history: BoundedVecDeque<Rc<RefCell<dyn Command>>>,
 }
@@ -301,16 +317,16 @@ impl Editor {
         if self.document.filename.is_none() {
             let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
             if new_name.is_none() {
-                self.status_message = StatusMessage::from("Save aborted.".to_string());
+                self.set_status_message("Save aborted.".to_string());
                 return;
             }
 
             self.document.filename = new_name;
         }
         if self.document.save().is_ok() {
-            self.status_message = StatusMessage::from("File saved successfully.".to_string());
+            self.set_status_message("File saved successfully.".to_string());
         } else {
-            self.status_message = StatusMessage::from("Error writing file!".to_string());
+            self.set_status_message("Error writing file!".to_string());
         }
     }
 
@@ -398,7 +414,7 @@ impl Editor {
         match keypress {
             KEY_QUIT => {
                 if self.quit_times > 0 && self.document.is_dirty() {
-                    self.status_message = StatusMessage::from(format!(
+                    self.set_status_message(format!(
                         "WARNING! File has unsaved changes. Press Ctrl-Q {} more time(s) to quit.",
                         self.quit_times
                     ));
@@ -408,7 +424,9 @@ impl Editor {
 
                 self.should_quit = true;
             }
-            KEY_COPY => CopyCommand::new().execute(self),
+            KEY_COPY => {
+                CopyCommand::new().execute(self);
+            }
             KEY_PASTE => {
                 let command = PasteCommand::new(self.cursor_position, self.clipboard.clone());
                 self.command_history
@@ -434,8 +452,8 @@ impl Editor {
             KEY_END_SELECT => {
                 if let Some(Selection { start, end: _ }) = self.selection {
                     self.selection = Some(Selection {
-                        start,
-                        end: self.cursor_position,
+                        start: start.min(self.cursor_position),
+                        end: start.max(self.cursor_position),
                     });
                 }
             }
@@ -459,7 +477,7 @@ impl Editor {
         self.scroll();
         if self.quit_times < QUIT_TIMES {
             self.quit_times = QUIT_TIMES;
-            self.status_message = StatusMessage::from(String::new());
+            self.set_status_message(String::new());
         }
         Ok(())
     }
@@ -504,7 +522,7 @@ impl Editor {
     {
         let mut result = String::new();
         loop {
-            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.set_status_message(format!("{}{}", prompt, result));
             self.refresh_screen()?;
             let event = Terminal::read_event()?;
             if let Event::Key(key) = event {
@@ -549,7 +567,7 @@ impl Editor {
             }
         }
 
-        self.status_message = StatusMessage::from(String::new());
+        self.set_status_message(String::new());
         if result.is_empty() {
             Ok(None)
         } else {
@@ -565,7 +583,7 @@ impl Editor {
     fn prompt_replacement(&mut self) -> Result<Option<String>, std::io::Error> {
         let mut result = String::new();
         loop {
-            self.status_message = StatusMessage::from(format!("Replace with: {}", result));
+            self.set_status_message(format!("Replace with: {}", result));
             self.refresh_screen()?;
             let event = Terminal::read_event()?;
             if let Event::Key(key) = event {
@@ -592,7 +610,7 @@ impl Editor {
             }
         }
 
-        self.status_message = StatusMessage::from(String::new());
+        self.set_status_message(String::new());
         if result.is_empty() {
             Ok(None)
         } else {
@@ -618,6 +636,15 @@ impl Editor {
         } else if x >= offset.x.saturating_add(width) {
             offset.x = x.saturating_sub(width).saturating_add(1);
         }
+    }
+
+    /// Sets the editor's status message
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - the message to display
+    pub fn set_status_message(&mut self, msg: String) {
+        self.status_message = StatusMessage::from(msg);
     }
 
     /// Copies the selection into the clipboard
@@ -754,5 +781,25 @@ impl Editor {
             // We need to update the cursor's max_position iff the keypress controls the cursor's x position
             self.max_position = Some(x);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::Position;
+
+    #[test]
+    fn position_cmp() {
+        let mut pos1 = Position { x: 0, y: 0 };
+        let mut pos2 = Position { x: 0, y: 0 };
+        assert_eq!(pos1, pos2);
+
+        pos2 = Position { x: 5, y: 2 };
+        assert!(pos2 > pos1);
+        assert_eq!(pos2.min(pos1), pos1);
+
+        pos1 = Position { x: 7, y: 2 };
+        assert!(pos1 > pos2);
+        assert_eq!(pos1.max(pos2), pos1);
     }
 }
