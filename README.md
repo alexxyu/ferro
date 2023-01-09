@@ -11,4 +11,4 @@ Based on [Philipp Flenker's](https://www.philippflenker.com/hecto/) Rust text ed
 * Incremental forward and backward search
 * Search-and-delete / search-and-replace
 * Auto-indentation
-* UTF-8 support (mostly)
+* Built-in calculator
