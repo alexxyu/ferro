@@ -183,7 +183,7 @@ dependencies = [
  "libc",
  "mio",
  "parking_lot",
- "signal-hook",
+ "signal-hook 0.1.17",
  "winapi",
 ]
 
@@ -223,12 +223,13 @@ dependencies = [
 
 [[package]]
 name = "ferro"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "lazy_static",
  "serde",
  "serde_json",
  "shunting",
+ "signal-hook 0.3.15",
  "termbg",
  "termion",
  "unicode-segmentation",
@@ -635,6 +636,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "signal-hook"
+version = "0.3.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "732768f1176d21d09e076c23a93123d40bba92d50c4058da34d45c8de8e682b9"
+dependencies = [
+ "libc",
+ "signal-hook-registry",
+]
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -693,9 +704,9 @@ dependencies = [
 
 [[package]]
 name = "termion"
-version = "1.5.6"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "077185e2eac69c3f8379a4298e1e07cd36beb962290d4a51199acf0fdc10607e"
+checksum = "659c1f379f3408c7e5e84c7d0da6d93404e3800b6b9d063ba24436419302ec90"
 dependencies = [
  "libc",
  "numtoa",

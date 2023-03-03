@@ -1,9 +1,9 @@
-use serde::Deserialize;
-
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::Path;
+
+use serde::Deserialize;
 
 /// The file type of a document.
 #[derive(Deserialize)]

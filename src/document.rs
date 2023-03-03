@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+use std::fs;
+use std::io::{Error, Write};
+
 use crate::FileType;
 use crate::Position;
 use crate::Row;
 use crate::SearchDirection;
-use std::collections::HashMap;
-use std::fs;
-use std::io::{Error, Write};
 
 const DEFAULT_SPACES_PER_TAB: usize = 4;
 
