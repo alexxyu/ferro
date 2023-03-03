@@ -1,18 +1,22 @@
+use std::cell::RefCell;
+use std::env;
+use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
+
+use bounded_vec_deque::BoundedVecDeque;
+use shunting::{MathContext, ShuntingParser};
+use signal_hook::consts::SIGWINCH;
+use termion::event::{Event, Key, MouseEvent};
+use unicode_segmentation::UnicodeSegmentation;
+
 use crate::commands::{copy::CopyCommand, paste::PasteCommand, Command};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
-
-use bounded_vec_deque::BoundedVecDeque;
-use shunting::{MathContext, ShuntingParser};
-
-use std::cell::RefCell;
-use std::env;
-use std::rc::Rc;
-use std::time::Duration;
-use std::time::Instant;
-use termion::event::{Event, Key, MouseEvent};
-use unicode_segmentation::UnicodeSegmentation;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 2;
@@ -114,7 +118,7 @@ pub struct Editor {
     terminal: Terminal,
     /// The current position of the cursor
     cursor_position: Position,
-    /// THe offset of the visible page
+    /// The offset of the visible page
     offset: Position,
     /// The maximal horizontal position that is used when the user navigates up or down
     max_position: Option<usize>,
@@ -132,6 +136,8 @@ pub struct Editor {
     pub clipboard: Option<String>,
     /// History of commands
     command_history: BoundedVecDeque<Rc<RefCell<dyn Command>>>,
+    /// Flag for the SIGWINCH signal that is set when the terminal window is resized
+    _sigwinch_flag: Arc<AtomicBool>,
 }
 
 impl Editor {
@@ -152,6 +158,9 @@ impl Editor {
             Document::default()
         };
 
+        let flag = Arc::new(AtomicBool::new(false));
+        let _ = signal_hook::flag::register(SIGWINCH, Arc::clone(&flag)).unwrap();
+
         Editor {
             should_quit: false,
             terminal: Terminal::default().expect("Failed to initialize terminal"),
@@ -165,6 +174,7 @@ impl Editor {
             selection: None,
             clipboard: None,
             command_history: BoundedVecDeque::new(HISTORY_LIMIT),
+            _sigwinch_flag: flag,
         }
     }
 
@@ -412,7 +422,17 @@ impl Editor {
     ///
     /// Will return `Err` if I/O error encountered while reading event
     fn process_event(&mut self) -> Result<(), std::io::Error> {
-        let event = Terminal::read_event()?;
+        let handle =
+            thread::spawn(move || -> Result<Event, std::io::Error> { Terminal::read_event() });
+
+        while !handle.is_finished() {
+            if self._sigwinch_flag.swap(false, Ordering::Relaxed) {
+                self.terminal.resize()?;
+                self.refresh_screen()?;
+            }
+        }
+        let event = handle.join().unwrap()?;
+
         match event {
             Event::Key(keypress) => self.process_keypress(keypress),
             Event::Mouse(mousepress) => self.process_mousepress(mousepress),
