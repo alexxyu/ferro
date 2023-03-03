@@ -1,13 +1,14 @@
-use crate::Document;
-use crate::Row;
-use crate::Terminal;
-
-use shunting::{MathContext, ShuntingParser};
 use std::env;
 use std::time::Duration;
 use std::time::Instant;
+
+use shunting::{MathContext, ShuntingParser};
 use termion::event::{Event, Key, MouseEvent};
 use unicode_segmentation::UnicodeSegmentation;
+
+use crate::Document;
+use crate::Row;
+use crate::Terminal;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 2;

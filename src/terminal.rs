@@ -1,5 +1,7 @@
-use crate::Position;
 use std::io::{self, stdout, Write};
+
+use crate::Position;
+
 use termion::event::Event;
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};

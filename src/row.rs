@@ -1,9 +1,10 @@
-use crate::highlighting;
-use crate::HighlightingOptions;
-use crate::SearchDirection;
 use std::vec;
 use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
+
+use crate::highlighting;
+use crate::HighlightingOptions;
+use crate::SearchDirection;
 
 /// Represents a row of text within the document.
 #[derive(Default)]
