@@ -1,12 +1,13 @@
 use std::io::{self, stdout, Write};
 
-use crate::Position;
-
 use termion::event::Event;
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};
 
+use crate::Position;
+
 /// A size represented by a width and height.
+#[derive(PartialEq, Eq)]
 pub struct Size {
     pub width: u16,
     pub height: u16,
@@ -26,6 +27,7 @@ impl Terminal {
     /// Will return `Err` if unable to get terminal size
     pub fn default() -> Result<Self, std::io::Error> {
         let size = termion::terminal_size()?;
+
         Ok(Self {
             size: Size {
                 width: size.0,
@@ -33,6 +35,22 @@ impl Terminal {
             },
             _stdout: MouseTerminal::from(stdout().into_raw_mode()?),
         })
+    }
+
+    /// Checks and accordingly updates [Terminal]'s window size.
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if unable to get terminal size
+    pub fn resize(&mut self) -> Result<(), std::io::Error> {
+        let term_size = termion::terminal_size()?;
+
+        self.size = Size {
+            width: term_size.0,
+            height: term_size.1.saturating_sub(2),
+        };
+
+        Ok(())
     }
 
     /// Gets the size of the Terminal.
