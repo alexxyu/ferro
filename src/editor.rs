@@ -4,6 +4,8 @@ use crate::Row;
 use crate::Terminal;
 
 use bounded_vec_deque::BoundedVecDeque;
+use shunting::{MathContext, ShuntingParser};
+
 use std::cell::RefCell;
 use std::env;
 use std::rc::Rc;
@@ -387,6 +389,23 @@ impl Editor {
         self.document.refresh_highlighting();
     }
 
+    /// Prompts the user for a mathematical expression and displays its evaluated result.
+    fn evaluate_expression(&mut self) {
+        let query = self
+            .prompt("Enter your expression: ", |_, _, _| {})
+            .unwrap_or(None)
+            .unwrap_or(String::new());
+
+        if let Ok(expr) = ShuntingParser::parse_str(&query) {
+            if let Ok(result) = MathContext::new().eval(&expr) {
+                self.status_message = StatusMessage::from(format!("Result = {}", result));
+                return;
+            }
+        }
+
+        self.status_message = StatusMessage::from("Invalid expression.".into());
+    }
+
     /// Processes an event (i.e. a keypress or a mousepress).
     ///
     /// # Errors
@@ -457,6 +476,7 @@ impl Editor {
                     });
                 }
             }
+            Key::Alt('c') => self.evaluate_expression(),
             Key::Char(c) => {
                 let indent = self.document.insert(&mut self.cursor_position, c);
                 (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
