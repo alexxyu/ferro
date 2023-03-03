@@ -934,9 +934,9 @@ mod test {
         assert_eq!(row.find_next_word(1, SearchDirection::Backward), Some(0));
         assert_eq!(row.find_next_word(0, SearchDirection::Backward), None);
 
-        row = Row::from("my___new_constant");
-        assert_eq!(row.find_next_word(0, SearchDirection::Forward), Some(5));
-        assert_eq!(row.find_next_word(8, SearchDirection::Backward), Some(2));
+        row = Row::from("my__constant  is great");
+        assert_eq!(row.find_next_word(0, SearchDirection::Forward), Some(14));
+        assert_eq!(row.find_next_word(14, SearchDirection::Backward), Some(12));
 
         row = Row::from("");
         assert_eq!(row.find_next_word(0, SearchDirection::Forward), None);
