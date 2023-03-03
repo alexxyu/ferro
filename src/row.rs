@@ -259,7 +259,7 @@ impl Row {
         if substring.chars().nth(0).unwrap().is_alphanumeric() {
             // If the cursor is currently on a word, we need to find the next separator
             // character before we can find the next word.
-            if let Some(sep_idx) = substring.find(is_separator) {
+            if let Some(sep_idx) = substring.find(is_word_separator) {
                 x_skip = sep_idx;
             } else {
                 return None;
@@ -299,7 +299,7 @@ impl Row {
         if substring.chars().nth_back(0).unwrap().is_alphanumeric() {
             // If the cursor is currently on a word, we need to find the next separator
             // character before we can find the next word.
-            if let Some(sep_idx) = substring.rfind(is_separator) {
+            if let Some(sep_idx) = substring.rfind(is_word_separator) {
                 end = sep_idx;
             } else {
                 return Some(0);
@@ -425,7 +425,7 @@ impl Row {
     ) -> bool {
         if *index > 0 {
             let prev_char = chars[*index - 1];
-            if !prev_char.is_ascii_whitespace() {
+            if !is_word_separator(prev_char) {
                 return false;
             }
         }
@@ -433,7 +433,7 @@ impl Row {
         for word in keywords {
             if *index < chars.len().saturating_sub(word.len()) {
                 let next_char = chars[*index + word.len()];
-                if !is_separator(next_char) {
+                if !is_word_separator(next_char) {
                     continue;
                 }
             }
@@ -708,7 +708,7 @@ impl Row {
         if opts.numbers() && c.is_ascii_digit() {
             if *index > 0 {
                 let prev_char = chars[*index - 1];
-                if !is_separator(prev_char) {
+                if !is_word_separator(prev_char) {
                     return false;
                 }
             }
@@ -851,8 +851,8 @@ impl From<&str> for Row {
     }
 }
 
-fn is_separator(c: char) -> bool {
-    c.is_ascii_punctuation() || c.is_ascii_whitespace()
+fn is_word_separator(c: char) -> bool {
+    (c.is_ascii_punctuation() && c != '_') || c.is_ascii_whitespace()
 }
 
 #[cfg(test)]
