@@ -460,13 +460,18 @@ impl Editor {
             Key::Char(c) => {
                 let indent = self.document.insert(&mut self.cursor_position, c);
                 (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
+                self.command_history.clear();
             }
-            Key::Delete => self.document.delete(&self.cursor_position),
+            Key::Delete => {
+                self.document.delete(&self.cursor_position);
+                self.command_history.clear();
+            }
             Key::Backspace => {
                 if self.cursor_position.x > 0 || self.cursor_position.y > 0 {
                     self.move_cursor(Key::Left);
                     self.document.delete(&self.cursor_position);
                 }
+                self.command_history.clear();
             }
             KEY_POS_UP | KEY_POS_DOWN | KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT
             | KEY_WORD_RIGHT | KEY_LINE_LEFT | KEY_LINE_RIGHT | KEY_PAGE_UP | KEY_PAGE_DOWN
@@ -545,6 +550,7 @@ impl Editor {
                     }
                     KEY_DELETE_SELECTIONS => {
                         self.document.delete_selections();
+                        self.command_history.clear();
                         break;
                     }
                     KEY_REPLACE_SELECTIONS => {
@@ -554,6 +560,7 @@ impl Editor {
                         } else {
                             self.document.reset_selections();
                         }
+                        self.command_history.clear();
                         break;
                     }
                     Key::Esc => {
