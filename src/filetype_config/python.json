@@ -1,0 +1,52 @@
+{
+  "name": "Python",
+  "extension": ["py"],
+  "highlighting_options": {
+    "numbers": true,
+    "characters": false,
+    "strings": ["\"", "'"],
+    "comments": "#",
+    "multiline_comments": [
+      ["'''", "'''"],
+      ["\"\"\"", "\"\"\""]
+    ],
+    "primary_keywords": [
+      "False",
+      "None",
+      "True",
+      "and",
+      "as",
+      "assert",
+      "async",
+      "await",
+      "break",
+      "class",
+      "continue",
+      "def",
+      "del",
+      "elif",
+      "else",
+      "except",
+      "finally",
+      "for",
+      "from",
+      "global",
+      "if",
+      "import",
+      "in",
+      "is",
+      "lambda",
+      "nonlocal",
+      "not",
+      "or",
+      "pass",
+      "raise",
+      "return",
+      "try",
+      "while",
+      "with",
+      "yield"
+    ],
+    "secondary_keywords": []
+  }
+}
