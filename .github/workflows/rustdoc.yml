@@ -25,8 +25,12 @@ jobs:
       - name: Generate docs
         run: cargo doc --all --no-deps
 
+      # This step is required since github-pages needs an index.html at the root-level
+      - name: Add barebones `index.html`
+        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=ferro/index.html\">" > target/doc/index.html
+
       - name: Deploy docs
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/doc/ferro
+          publish_dir: ./target/doc
