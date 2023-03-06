@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"ferro":[["impl <a class=\"trait\" href=\"https://docs.rs/lazy_static/1.4.0/lazy_static/trait.LazyStatic.html\" title=\"trait lazy_static::LazyStatic\">LazyStatic</a> for <a class=\"struct\" href=\"ferro/highlighting/struct.SHOULD_USE_DARK_THEME.html\" title=\"struct ferro::highlighting::SHOULD_USE_DARK_THEME\">SHOULD_USE_DARK_THEME</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"ferro":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.67.1/core/convert/trait.From.html\" title=\"trait core::convert::From\">From</a>&lt;&amp;<a class=\"primitive\" href=\"https://doc.rust-lang.org/1.67.1/std/primitive.str.html\">str</a>&gt; for <a class=\"struct\" href=\"ferro/row/struct.Row.html\" title=\"struct ferro::row::Row\">Row</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
