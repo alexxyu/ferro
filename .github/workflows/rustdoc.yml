@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - ci/docs
 
 permissions:
   contents: write
