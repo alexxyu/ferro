@@ -1,0 +1,31 @@
+name: Deploy docs to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - ci/docs
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  docs:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate docs
+        run: cargo doc --all --no-deps
+
+      - name: Deploy docs
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: ./target/doc

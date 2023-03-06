@@ -1,4 +1,4 @@
-name: Run ferro tests
+name: Run ferro tests and coverage
 
 on:
   push:
