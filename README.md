@@ -17,7 +17,7 @@ Based on [Philipp Flenker's](https://www.philippflenker.com/hecto/) Rust text ed
 
 ## Documentation
 
-API documentation is located [here](alexxyu.github.io/ferro/).
+API documentation is located [here](https://alexxyu.github.io/ferro/).
 
 For reference on controls and usage, see [`docs/usage.md`](https://github.com/alexxyu/ferro/blob/main/docs/usage.md).
 
