@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["FileType","The file type of a document."],["HighlightingOptions","The highlighting options that determine what gets highlighted in a file."]]};

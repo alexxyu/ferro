@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["Type","The different types of highlighting."]],"struct":[["SHOULD_USE_DARK_THEME",""]]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["Size","A size represented by a width and height."],["Terminal","The terminal that is used by the editor."]]};

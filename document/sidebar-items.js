@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":[["DEFAULT_SPACES_PER_TAB",""]],"struct":[["Document","The document that is currently being edited."]]};
