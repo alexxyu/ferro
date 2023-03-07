@@ -1,4 +1,4 @@
-name: Run ferro tests
+name: Run ferro tests and coverage
 
 on:
   push:
@@ -14,7 +14,7 @@ env:
 
 jobs:
   run-tests:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
