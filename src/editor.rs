@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::env;
-use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -135,7 +134,7 @@ pub struct Editor {
     /// Clipboard contents, if any
     pub clipboard: Option<String>,
     /// History of commands
-    command_history: BoundedVecDeque<Rc<RefCell<dyn Command>>>,
+    command_history: BoundedVecDeque<Box<RefCell<dyn Command>>>,
     /// Flag for the SIGWINCH signal that is set when the terminal window is resized
     _sigwinch_flag: Arc<AtomicBool>,
 }
@@ -467,17 +466,14 @@ impl Editor {
                 CopyCommand::new().execute(self);
             }
             KEY_PASTE => {
-                let command = PasteCommand::new(self.cursor_position, self.clipboard.clone());
+                let mut command = PasteCommand::new(self.cursor_position, self.clipboard.clone());
+                command.execute(self);
                 self.command_history
-                    .push_back(Rc::new(RefCell::new(command)));
-
-                let command_clone = self.command_history.back().unwrap().clone();
-                command_clone.borrow_mut().execute(self);
+                    .push_back(Box::new(RefCell::new(command)));
             }
             KEY_UNDO => {
                 if let Some(command) = self.command_history.pop_back() {
-                    let command_clone = command.clone();
-                    command_clone.borrow_mut().undo(self);
+                    command.borrow_mut().undo(self);
                 }
             }
             KEY_SAVE => self.save(),
