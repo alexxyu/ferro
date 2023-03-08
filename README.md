@@ -25,8 +25,14 @@ If you're interested in contributing, check out [`CONTRIBUTING.md`](https://gith
 
 ## Installation
 
-For now, the only way to install `ferro` is to manually build from source. This assumes that you've
-already [installed Rust](https://www.rust-lang.org/tools/install).
+### Using `cargo`
+
+The simplest way to install `ferro` is to run `cargo install ferro` on your machine. You can then
+run `ferro [file]` to start editing!
+
+### From source
+
+The following instructions assume that you've already [installed Rust](https://www.rust-lang.org/tools/install).
 
 ```
 git clone https://github.com/alexxyu/ferro
