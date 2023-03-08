@@ -691,37 +691,37 @@ impl Editor {
     }
 
     /// Copies the selection into the clipboard
-    pub fn copy(&mut self) {
+    pub fn copy_to_clipboard(&mut self) {
         if let Some(Selection { start, end }) = self.selection {
             self.clipboard = Some(self.document.get_contents(start, end));
         }
     }
 
-    /// Pastes clipboard contents at the specified position
+    /// Inserts a string at the specified position
     ///
     /// # Arguments
     ///
     /// * `at` - the position at which to paste
-    /// * `clipboard` - the clipboard contents to paste
-    pub fn paste(&mut self, at: &Position, clipboard: &Option<String>) {
-        if let Some(content) = &clipboard {
-            let mut pos = at.clone();
-            for c in content[..].chars().rev() {
-                self.document.insert(&mut pos, c);
-            }
+    /// * `to_paste` - the clipboard contents to paste
+    pub fn insert_string_at(&mut self, at: &Position, to_paste: &String) {
+        self.cursor_position = *at;
+        for c in to_paste.chars() {
+            let indent = self.document.insert(&mut self.cursor_position, c);
+            (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
         }
     }
 
-    /// Undoes a paste operation
+    /// Deletes characters starting at the specified position
     ///
     /// # Arguments
     ///
-    /// * `at` - the position at which to undo paste
+    /// * `at` - the position at which to delete characters
     /// * `n_chars_to_delete` - the number of characters to delete from the position
-    pub fn undo_paste(&mut self, at: &Position, n_chars_to_delete: usize) {
+    pub fn delete_chars_at(&mut self, at: &Position, n_chars_to_delete: usize) {
         (0..n_chars_to_delete).for_each(|_| {
             self.document.delete(&at);
         });
+        self.cursor_position = *at;
     }
 
     /// Moves the cursor based on the key that was pressed.

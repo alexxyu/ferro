@@ -11,7 +11,7 @@ impl CopyCommand {
 
 impl Command for CopyCommand {
     fn execute(&mut self, editor: &mut Editor) {
-        editor.copy();
+        editor.copy_to_clipboard();
         let clipboard_length = if let Some(clipboard_contents) = &editor.clipboard {
             clipboard_contents.len()
         } else {
