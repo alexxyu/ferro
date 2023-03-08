@@ -8,7 +8,10 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn new(position: Position, content: String) -> Self {
-        DeleteCommand { position, content }
+        DeleteCommand {
+            position,
+            content: content.chars().rev().collect(),
+        }
     }
 }
 

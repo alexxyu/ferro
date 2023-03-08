@@ -7,6 +7,7 @@ pub enum CommandType {
     INSERT,
     DELETE,
     BACKSPACE,
+    REPLACE,
 }
 
 pub struct CommandGroup {
@@ -15,19 +16,19 @@ pub struct CommandGroup {
 }
 
 impl CommandGroup {
+    pub fn new(command_type: CommandType) -> Self {
+        return CommandGroup {
+            commands: Vec::new(),
+            command_type,
+        };
+    }
+
     pub fn from_command(command: BoxedCommand, command_type: CommandType) -> Self {
         return CommandGroup {
             commands: vec![command],
             command_type,
         };
     }
-
-    // pub fn from_commands(commands: Vec<BoxedCommand>, command_type: CommandType) -> Self {
-    //     return CommandGroup {
-    //         commands,
-    //         command_type,
-    //     };
-    // }
 
     pub fn add(&mut self, command: BoxedCommand) {
         self.commands.push(command);

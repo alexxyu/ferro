@@ -372,6 +372,14 @@ impl Row {
         self.selections.clear();
     }
 
+    pub fn get_selections(&self) -> Vec<(usize, String)> {
+        let s = self.to_string();
+        self.selections
+            .iter()
+            .map(|[start, end]| (*start, s.get(*start..*end).unwrap().into()))
+            .collect::<Vec<(usize, String)>>()
+    }
+
     /// Checks whether there is a string match in the row to highlight.
     ///
     /// # Arguments

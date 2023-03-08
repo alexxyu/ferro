@@ -645,18 +645,37 @@ impl Editor {
                         }
                     }
                     KEY_DELETE_SELECTIONS => {
-                        self.document.delete_selections();
-                        self.command_history.clear();
+                        let selections = self.document.get_selections();
+
+                        let mut command_group = CommandGroup::new(CommandType::REPLACE);
+                        for (pos, selection) in selections {
+                            let delete_command = DeleteCommand::new(pos, selection);
+                            command_group.add(Box::new(RefCell::new(delete_command)));
+                        }
+
+                        command_group.execute(self);
+                        self.command_history.push_back(command_group);
+                        self.document.reset_selections();
                         break;
                     }
                     KEY_REPLACE_SELECTIONS => {
                         let replacement = self.prompt_replacement()?;
-                        if replacement.is_some() {
-                            self.document.replace_selections(&replacement);
-                        } else {
-                            self.document.reset_selections();
+                        if let Some(replacement_string) = replacement {
+                            let selections = self.document.get_selections();
+
+                            let mut command_group = CommandGroup::new(CommandType::REPLACE);
+                            for (pos, selection) in selections {
+                                let delete_command = DeleteCommand::new(pos, selection);
+                                let insert_command =
+                                    InsertCommand::new(pos, replacement_string.clone());
+                                command_group.add(Box::new(RefCell::new(delete_command)));
+                                command_group.add(Box::new(RefCell::new(insert_command)));
+                            }
+
+                            command_group.execute(self);
+                            self.command_history.push_back(command_group);
                         }
-                        self.command_history.clear();
+                        self.document.reset_selections();
                         break;
                     }
                     Key::Esc => {
@@ -761,12 +780,12 @@ impl Editor {
     ///
     /// # Arguments
     ///
-    /// * `at` - the position at which to paste
-    /// * `to_paste` - the clipboard contents to paste
+    /// * `at` - the position at which to insert
+    /// * `content` - the string to insert
     /// * `move_right` - whether to move the cursor right after each insertion
-    pub fn insert_string_at(&mut self, at: &Position, to_paste: &String, move_right: bool) {
+    pub fn insert_string_at(&mut self, at: &Position, content: &String, move_right: bool) {
         self.cursor_position = *at;
-        for c in to_paste.chars() {
+        for c in content.chars() {
             let indent = self.document.insert(&mut self.cursor_position, c);
             if move_right {
                 (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
