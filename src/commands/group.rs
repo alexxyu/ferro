@@ -1,6 +1,7 @@
 use super::{BoxedCommand, Command};
 use crate::Editor;
 
+#[derive(PartialEq, Debug)]
 pub enum CommandType {
     PASTE,
     INSERT,

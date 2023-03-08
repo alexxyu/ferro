@@ -17,7 +17,7 @@ use crate::commands::delete::DeleteCommand;
 use crate::commands::group::{CommandGroup, CommandType};
 use crate::commands::insert::InsertCommand;
 use crate::commands::paste::PasteCommand;
-use crate::commands::Command;
+use crate::commands::{BoxedCommand, Command};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -514,24 +514,7 @@ impl Editor {
             Key::Char(c) => {
                 let mut command = InsertCommand::new(self.cursor_position, c.to_string());
                 command.execute(self);
-
-                let mut can_merge_with_last_command = false;
-                if let Some(last_command) = self.command_history.back_mut() {
-                    if matches!(last_command.command_type, CommandType::INSERT) {
-                        can_merge_with_last_command = true;
-                    }
-                }
-
-                if can_merge_with_last_command {
-                    if let Some(last_command) = self.command_history.back_mut() {
-                        last_command.add(Box::new(RefCell::new(command)));
-                    }
-                } else {
-                    self.command_history.push_back(CommandGroup::from_command(
-                        Box::new(RefCell::new(command)),
-                        CommandType::INSERT,
-                    ));
-                }
+                self.merge_or_add_command(Box::new(RefCell::new(command)), CommandType::INSERT);
             }
             Key::Delete => {
                 let Position { x, y } = self.cursor_position;
@@ -547,24 +530,7 @@ impl Editor {
                     );
 
                     command.execute(self);
-
-                    let mut can_merge_with_last_command = false;
-                    if let Some(last_command) = self.command_history.back_mut() {
-                        if matches!(last_command.command_type, CommandType::DELETE) {
-                            can_merge_with_last_command = true;
-                        }
-                    }
-
-                    if can_merge_with_last_command {
-                        if let Some(last_command) = self.command_history.back_mut() {
-                            last_command.add(Box::new(RefCell::new(command)));
-                        }
-                    } else {
-                        self.command_history.push_back(CommandGroup::from_command(
-                            Box::new(RefCell::new(command)),
-                            CommandType::DELETE,
-                        ));
-                    }
+                    self.merge_or_add_command(Box::new(RefCell::new(command)), CommandType::DELETE);
                 }
             }
             Key::Backspace => {
@@ -577,25 +543,12 @@ impl Editor {
                             .unwrap()
                             .to_string(),
                     );
+
                     command.execute(self);
-
-                    let mut can_merge_with_last_command = false;
-                    if let Some(last_command) = self.command_history.back_mut() {
-                        if matches!(last_command.command_type, CommandType::BACKSPACE) {
-                            can_merge_with_last_command = true;
-                        }
-                    }
-
-                    if can_merge_with_last_command {
-                        if let Some(last_command) = self.command_history.back_mut() {
-                            last_command.add(Box::new(RefCell::new(command)));
-                        }
-                    } else {
-                        self.command_history.push_back(CommandGroup::from_command(
-                            Box::new(RefCell::new(command)),
-                            CommandType::BACKSPACE,
-                        ));
-                    }
+                    self.merge_or_add_command(
+                        Box::new(RefCell::new(command)),
+                        CommandType::BACKSPACE,
+                    );
                 }
             }
             KEY_POS_UP | KEY_POS_DOWN | KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT
@@ -610,6 +563,24 @@ impl Editor {
             self.set_status_message(String::new());
         }
         Ok(())
+    }
+
+    fn merge_or_add_command(&mut self, command: BoxedCommand, command_type: CommandType) {
+        let mut can_merge_with_last_command = false;
+        if let Some(last_command) = self.command_history.back_mut() {
+            if last_command.command_type == command_type {
+                can_merge_with_last_command = true;
+            }
+        }
+
+        if can_merge_with_last_command {
+            if let Some(last_command) = self.command_history.back_mut() {
+                last_command.add(command);
+            }
+        } else {
+            self.command_history
+                .push_back(CommandGroup::from_command(command, command_type));
+        }
     }
 
     /// Processes a mousepress event.
@@ -807,10 +778,11 @@ impl Editor {
     /// * `at` - the position at which to delete characters
     /// * `n_chars_to_delete` - the number of characters to delete from the position
     pub fn delete_chars_at(&mut self, at: &Position, n_chars_to_delete: usize) {
+        self.cursor_position = *at;
         (0..n_chars_to_delete).for_each(|_| {
             self.document.delete(&at);
         });
-        self.cursor_position = *at;
+        // self.cursor_position = *at;
     }
 
     /// Moves the cursor based on the key that was pressed.
