@@ -12,7 +12,11 @@ use signal_hook::consts::SIGWINCH;
 use termion::event::{Event, Key, MouseEvent};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::commands::{copy::CopyCommand, paste::PasteCommand, Command};
+use crate::commands::copy::CopyCommand;
+use crate::commands::delete::DeleteCommand;
+use crate::commands::insert::InsertCommand;
+use crate::commands::paste::PasteCommand;
+use crate::commands::{BoxedCommand, Command};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -84,6 +88,17 @@ impl PartialOrd for Position {
     }
 }
 
+impl std::ops::Add for Position {
+    type Output = Position;
+
+    fn add(self, other: Position) -> Position {
+        Position {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
 /// A status message printed at the bottom of the editor.
 struct StatusMessage {
     text: String,
@@ -134,7 +149,7 @@ pub struct Editor {
     /// Clipboard contents, if any
     pub clipboard: Option<String>,
     /// History of commands
-    command_history: BoundedVecDeque<Box<RefCell<dyn Command>>>,
+    command_history: BoundedVecDeque<BoxedCommand>,
     /// Flag for the SIGWINCH signal that is set when the terminal window is resized
     _sigwinch_flag: Arc<AtomicBool>,
 }
@@ -494,20 +509,45 @@ impl Editor {
             }
             Key::Alt('c') => self.evaluate_expression(),
             Key::Char(c) => {
-                let indent = self.document.insert(&mut self.cursor_position, c);
-                (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
-                self.command_history.clear();
+                // let indent = self.document.insert(&mut self.cursor_position, c);
+                // (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
+                // self.command_history.clear();
+                let mut command = InsertCommand::new(self.cursor_position, c.to_string());
+                command.execute(self);
+                self.command_history
+                    .push_back(Box::new(RefCell::new(command)));
             }
             Key::Delete => {
-                self.document.delete(&self.cursor_position);
-                self.command_history.clear();
+                // self.document.delete(&self.cursor_position);
+                // self.command_history.clear();
+                let mut command = DeleteCommand::new(
+                    self.cursor_position,
+                    self.document.get_contents(
+                        self.cursor_position,
+                        self.cursor_position + Position { x: 1, y: 0 },
+                    ),
+                );
+                command.execute(self);
+                self.command_history
+                    .push_back(Box::new(RefCell::new(command)));
             }
             Key::Backspace => {
                 if self.cursor_position.x > 0 || self.cursor_position.y > 0 {
+                    // self.move_cursor(Key::Left);
+                    // self.document.delete(&self.cursor_position);
+                    // self.command_history.clear();
                     self.move_cursor(Key::Left);
-                    self.document.delete(&self.cursor_position);
+                    let mut command = DeleteCommand::new(
+                        self.cursor_position,
+                        self.document.get_contents(
+                            self.cursor_position,
+                            self.cursor_position + Position { x: 1, y: 0 },
+                        ),
+                    );
+                    command.execute(self);
+                    self.command_history
+                        .push_back(Box::new(RefCell::new(command)));
                 }
-                self.command_history.clear();
             }
             KEY_POS_UP | KEY_POS_DOWN | KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT
             | KEY_WORD_RIGHT | KEY_LINE_LEFT | KEY_LINE_RIGHT | KEY_PAGE_UP | KEY_PAGE_DOWN
