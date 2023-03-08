@@ -54,10 +54,10 @@ jobs:
       - name: Run grcov
         run: |
           mkdir -p ./target/debug/coverage
-          grcov . -o ./target/debug/coverage --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*'
+          grcov . -o ./target/debug/coverage/grcov.lcov --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*'
 
       - name: Upload to codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./target/debug/coverage
+          files: ./target/debug/coverage/grcov.lcov
           verbose: true
