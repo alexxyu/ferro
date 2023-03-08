@@ -52,7 +52,7 @@ jobs:
           rustup component add llvm-tools-preview
 
       - name: Run grcov
-        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*' -o .
+        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*' -o target/deps/grcov-report
 
       - name: Upload to codecov
         uses: codecov/codecov-action@v3
