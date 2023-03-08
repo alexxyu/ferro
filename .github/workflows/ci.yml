@@ -2,7 +2,7 @@ name: Run ferro tests and coverage
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/*]
   pull_request:
     branches: [main]
 
@@ -47,7 +47,9 @@ jobs:
         run: cargo test --all-features --no-fail-fast --verbose
 
       - name: Install grcov
-        run: if [[ ! -e ~/.cargo/bin/grcov ]]; then cargo install grcov; fi
+        run: |
+          if [[ ! -e ~/.cargo/bin/grcov ]]; then cargo install grcov; fi
+          rustup component add llvm-tools-preview
 
       - name: Run grcov
         run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*'
