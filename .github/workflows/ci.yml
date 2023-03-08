@@ -9,8 +9,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
-  RUSTFLAGS: "-Cinstrument-coverage"
-  RUSTDOCFLAGS: "-Cinstrument-coverage"
+  RUSTFLAGS: "-Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort"
+  RUSTDOCFLAGS: "-Cinstrument-coverage -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort"
 
 jobs:
   run-tests:
@@ -54,10 +54,10 @@ jobs:
       - name: Run grcov
         run: |
           mkdir -p ./target/debug/coverage
-          grcov . -o ./target/debug/coverage/grcov.lcov --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*'
+          grcov . -o ./target/debug/coverage/grcov-report.lcov --binary-path ./target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '**/editor.rs' --ignore '**/terminal.rs'
 
       - name: Upload to codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./target/debug/coverage/grcov.lcov
+          files: ./target/debug/coverage/grcov-report.lcov
           verbose: true
