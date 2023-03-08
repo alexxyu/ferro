@@ -28,7 +28,7 @@ impl Document {
     /// Constructs a blank document.
     pub fn default() -> Self {
         Document {
-            rows: vec![Row::default()],
+            rows: Vec::new(),
             filename: None,
             dirty: false,
             file_type: FileType::default(),
