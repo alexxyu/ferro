@@ -534,32 +534,37 @@ impl Editor {
                 }
             }
             Key::Delete => {
-                let mut command = DeleteCommand::new(
-                    self.cursor_position,
-                    self.document
-                        .get_char_in_doc(self.cursor_position)
-                        .unwrap()
-                        .to_string(),
-                );
+                let Position { x, y } = self.cursor_position;
+                if y < self.document.len() - 1
+                    || x < self.document.row(y).unwrap_or(&Row::default()).len()
+                {
+                    let mut command = DeleteCommand::new(
+                        self.cursor_position,
+                        self.document
+                            .get_char_in_doc(self.cursor_position)
+                            .unwrap()
+                            .to_string(),
+                    );
 
-                command.execute(self);
+                    command.execute(self);
 
-                let mut can_merge_with_last_command = false;
-                if let Some(last_command) = self.command_history.back_mut() {
-                    if matches!(last_command.command_type, CommandType::DELETE) {
-                        can_merge_with_last_command = true;
-                    }
-                }
-
-                if can_merge_with_last_command {
+                    let mut can_merge_with_last_command = false;
                     if let Some(last_command) = self.command_history.back_mut() {
-                        last_command.add(Box::new(RefCell::new(command)));
+                        if matches!(last_command.command_type, CommandType::DELETE) {
+                            can_merge_with_last_command = true;
+                        }
                     }
-                } else {
-                    self.command_history.push_back(CommandGroup::from_command(
-                        Box::new(RefCell::new(command)),
-                        CommandType::DELETE,
-                    ));
+
+                    if can_merge_with_last_command {
+                        if let Some(last_command) = self.command_history.back_mut() {
+                            last_command.add(Box::new(RefCell::new(command)));
+                        }
+                    } else {
+                        self.command_history.push_back(CommandGroup::from_command(
+                            Box::new(RefCell::new(command)),
+                            CommandType::DELETE,
+                        ));
+                    }
                 }
             }
             Key::Backspace => {
