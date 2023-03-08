@@ -763,11 +763,14 @@ impl Editor {
     ///
     /// * `at` - the position at which to paste
     /// * `to_paste` - the clipboard contents to paste
-    pub fn insert_string_at(&mut self, at: &Position, to_paste: &String) {
+    /// * `move_right` - whether to move the cursor right after each insertion
+    pub fn insert_string_at(&mut self, at: &Position, to_paste: &String, move_right: bool) {
         self.cursor_position = *at;
         for c in to_paste.chars() {
             let indent = self.document.insert(&mut self.cursor_position, c);
-            (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
+            if move_right {
+                (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
+            }
         }
     }
 
@@ -778,11 +781,10 @@ impl Editor {
     /// * `at` - the position at which to delete characters
     /// * `n_chars_to_delete` - the number of characters to delete from the position
     pub fn delete_chars_at(&mut self, at: &Position, n_chars_to_delete: usize) {
-        self.cursor_position = *at;
         (0..n_chars_to_delete).for_each(|_| {
             self.document.delete(&at);
         });
-        // self.cursor_position = *at;
+        self.cursor_position = *at;
     }
 
     /// Moves the cursor based on the key that was pressed.

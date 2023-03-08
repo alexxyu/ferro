@@ -18,7 +18,7 @@ impl PasteCommand {
 impl Command for PasteCommand {
     fn execute(&mut self, editor: &mut Editor) {
         let clipboard_length = if let Some(clipboard_contents) = &self.clipboard {
-            editor.insert_string_at(&self.position, &clipboard_contents);
+            editor.insert_string_at(&self.position, &clipboard_contents, true);
             clipboard_contents.len()
         } else {
             0

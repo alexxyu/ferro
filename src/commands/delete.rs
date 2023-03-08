@@ -18,6 +18,6 @@ impl Command for DeleteCommand {
     }
 
     fn undo(&mut self, editor: &mut Editor) {
-        editor.insert_string_at(&self.position, &self.content);
+        editor.insert_string_at(&self.position, &self.content, false);
     }
 }
