@@ -51,8 +51,9 @@ jobs:
           if [[ ! -e ~/.cargo/bin/grcov ]]; then cargo install grcov; fi
           rustup component add llvm-tools-preview
 
-      - name: Run grcov
-        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*' -o target/deps/grcov-report
+      - name: Generate code coverage report
+        id: coverage
+        uses: actions-rs/grcov@v0.1
 
       - name: Upload to codecov
         uses: codecov/codecov-action@v3
