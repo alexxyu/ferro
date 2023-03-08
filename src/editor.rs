@@ -14,9 +14,10 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::commands::copy::CopyCommand;
 use crate::commands::delete::DeleteCommand;
+use crate::commands::group::{CommandGroup, CommandType};
 use crate::commands::insert::InsertCommand;
 use crate::commands::paste::PasteCommand;
-use crate::commands::{BoxedCommand, Command};
+use crate::commands::Command;
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -149,7 +150,7 @@ pub struct Editor {
     /// Clipboard contents, if any
     pub clipboard: Option<String>,
     /// History of commands
-    command_history: BoundedVecDeque<BoxedCommand>,
+    command_history: BoundedVecDeque<CommandGroup>,
     /// Flag for the SIGWINCH signal that is set when the terminal window is resized
     _sigwinch_flag: Arc<AtomicBool>,
 }
@@ -483,12 +484,14 @@ impl Editor {
             KEY_PASTE => {
                 let mut command = PasteCommand::new(self.cursor_position, self.clipboard.clone());
                 command.execute(self);
-                self.command_history
-                    .push_back(Box::new(RefCell::new(command)));
+                self.command_history.push_back(CommandGroup::from_command(
+                    Box::new(RefCell::new(command)),
+                    CommandType::PASTE,
+                ));
             }
             KEY_UNDO => {
-                if let Some(command) = self.command_history.pop_back() {
-                    command.borrow_mut().undo(self);
+                if let Some(mut command) = self.command_history.pop_back() {
+                    command.undo(self);
                 }
             }
             KEY_SAVE => self.save(),
@@ -509,44 +512,85 @@ impl Editor {
             }
             Key::Alt('c') => self.evaluate_expression(),
             Key::Char(c) => {
-                // let indent = self.document.insert(&mut self.cursor_position, c);
-                // (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
-                // self.command_history.clear();
                 let mut command = InsertCommand::new(self.cursor_position, c.to_string());
                 command.execute(self);
-                self.command_history
-                    .push_back(Box::new(RefCell::new(command)));
+
+                let mut can_merge_with_last_command = false;
+                if let Some(last_command) = self.command_history.back_mut() {
+                    if matches!(last_command.command_type, CommandType::INSERT) {
+                        can_merge_with_last_command = true;
+                    }
+                }
+
+                if can_merge_with_last_command {
+                    if let Some(last_command) = self.command_history.back_mut() {
+                        last_command.add(Box::new(RefCell::new(command)));
+                    }
+                } else {
+                    self.command_history.push_back(CommandGroup::from_command(
+                        Box::new(RefCell::new(command)),
+                        CommandType::INSERT,
+                    ));
+                }
             }
             Key::Delete => {
-                // self.document.delete(&self.cursor_position);
-                // self.command_history.clear();
                 let mut command = DeleteCommand::new(
                     self.cursor_position,
-                    self.document.get_contents(
-                        self.cursor_position,
-                        self.cursor_position + Position { x: 1, y: 0 },
-                    ),
+                    self.document
+                        .get_char_in_doc(self.cursor_position)
+                        .unwrap()
+                        .to_string(),
                 );
+
                 command.execute(self);
-                self.command_history
-                    .push_back(Box::new(RefCell::new(command)));
+
+                let mut can_merge_with_last_command = false;
+                if let Some(last_command) = self.command_history.back_mut() {
+                    if matches!(last_command.command_type, CommandType::DELETE) {
+                        can_merge_with_last_command = true;
+                    }
+                }
+
+                if can_merge_with_last_command {
+                    if let Some(last_command) = self.command_history.back_mut() {
+                        last_command.add(Box::new(RefCell::new(command)));
+                    }
+                } else {
+                    self.command_history.push_back(CommandGroup::from_command(
+                        Box::new(RefCell::new(command)),
+                        CommandType::DELETE,
+                    ));
+                }
             }
             Key::Backspace => {
                 if self.cursor_position.x > 0 || self.cursor_position.y > 0 {
-                    // self.move_cursor(Key::Left);
-                    // self.document.delete(&self.cursor_position);
-                    // self.command_history.clear();
                     self.move_cursor(Key::Left);
                     let mut command = DeleteCommand::new(
                         self.cursor_position,
-                        self.document.get_contents(
-                            self.cursor_position,
-                            self.cursor_position + Position { x: 1, y: 0 },
-                        ),
+                        self.document
+                            .get_char_in_doc(self.cursor_position)
+                            .unwrap()
+                            .to_string(),
                     );
                     command.execute(self);
-                    self.command_history
-                        .push_back(Box::new(RefCell::new(command)));
+
+                    let mut can_merge_with_last_command = false;
+                    if let Some(last_command) = self.command_history.back_mut() {
+                        if matches!(last_command.command_type, CommandType::BACKSPACE) {
+                            can_merge_with_last_command = true;
+                        }
+                    }
+
+                    if can_merge_with_last_command {
+                        if let Some(last_command) = self.command_history.back_mut() {
+                            last_command.add(Box::new(RefCell::new(command)));
+                        }
+                    } else {
+                        self.command_history.push_back(CommandGroup::from_command(
+                            Box::new(RefCell::new(command)),
+                            CommandType::BACKSPACE,
+                        ));
+                    }
                 }
             }
             KEY_POS_UP | KEY_POS_DOWN | KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT
@@ -733,7 +777,7 @@ impl Editor {
     /// Copies the selection into the clipboard
     pub fn copy_to_clipboard(&mut self) {
         if let Some(Selection { start, end }) = self.selection {
-            self.clipboard = Some(self.document.get_contents(start, end));
+            self.clipboard = Some(self.document.get_doc_content_as_string(start, end));
         }
     }
 

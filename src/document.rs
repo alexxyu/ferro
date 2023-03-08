@@ -365,7 +365,32 @@ impl Document {
         self.rows.get(index)
     }
 
-    pub fn get_contents(&self, start: Position, end: Position) -> String {
+    /// Gets the character at the specified position in the document.
+    ///
+    /// # Arguments
+    ///
+    /// * `pos` - the position of the character to retrieve
+    pub fn get_char_in_doc(&self, pos: Position) -> Option<char> {
+        let Position { y, x } = pos;
+        if let Some(row) = self.rows.get(y) {
+            let row_string = row.to_string();
+            if x >= row_string.len() {
+                Some('\n')
+            } else {
+                row.to_string().chars().nth(x)
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Gets the string contents within the specified range within the document.
+    ///
+    /// # Arguments
+    ///
+    /// * `start` - the start position of the range
+    /// * `end` - the end position of the range
+    pub fn get_doc_content_as_string(&self, start: Position, end: Position) -> String {
         let Position {
             y: start_y,
             x: start_x,
