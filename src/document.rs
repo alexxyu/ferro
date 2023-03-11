@@ -336,26 +336,6 @@ impl Document {
         self.selections.insert(at.y);
     }
 
-    // /// Deletes all selections made in the document.
-    // pub fn delete_selections(&mut self) {
-    //     self.selections
-    //         .iter()
-    //         .for_each(|i| self.rows[*i].replace_selections(&None));
-    //     self.dirty = true;
-    // }
-
-    // /// Replaces all selections made in the document.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `replace` - the string to replace the selections with
-    // pub fn replace_selections(&mut self, replace: &Option<String>) {
-    //     self.selections
-    //         .iter()
-    //         .for_each(|i| self.rows[*i].replace_selections(replace));
-    //     self.dirty = true;
-    // }
-
     /// Resets all selections made in the document.
     pub fn reset_selections(&mut self) {
         self.rows.iter_mut().for_each(|row| row.reset_selections());
@@ -543,24 +523,8 @@ mod test {
             position.y = next_position.y;
             doc_matches += 1;
         }
-        // doc.delete_selections();
 
-        // THIS IS BROKEN...
-        // let text_after_delete: String = text.replace(query, "").split_ascii_whitespace().collect();
-        // let doc_after_delete: String = doc
-        //     .rows
-        //     .iter()
-        //     .map(|r| r.to_string())
-        //     .collect::<Vec<String>>()
-        //     .join("\n")
-        //     .split_ascii_whitespace()
-        //     .collect();
-
-        // assert_eq!(text_matches, doc_matches);
-        // assert!(doc
-        //     .find(query, &Position { x: 0, y: 0 }, SearchDirection::Forward)
-        //     .is_none());
-        // assert_eq!(text_after_delete, doc_after_delete);
+        assert_eq!(text_matches, doc_matches);
     }
 
     #[test]
