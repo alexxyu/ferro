@@ -363,11 +363,11 @@ impl Document {
     }
 
     /// Gets all selections made in the document.
-    pub fn get_selections(&self) -> Vec<(Position, String)> {
+    pub fn update_and_get_selections(&mut self) -> Vec<(Position, String)> {
         self.selections
             .iter()
             .map(|y| {
-                let row_selections = self.rows[*y].get_selections();
+                let row_selections = self.rows[*y].update_and_get_selections();
                 row_selections
                     .iter()
                     .map(|(x, s)| (Position { x: *x, y: *y }, s.clone()))

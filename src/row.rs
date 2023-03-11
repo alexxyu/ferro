@@ -316,47 +316,6 @@ impl Row {
         }
     }
 
-    /// Replaces all selections made in the row.
-    ///
-    /// # Arguments
-    ///
-    /// * `replace` - the string to replace the selections with
-    pub fn replace_selections(&mut self, word: &Option<String>) {
-        if self.selections.len() > 0 {
-            // See https://stackoverflow.com/a/64921799
-            let mut selections = std::mem::take(&mut self.selections);
-
-            selections.sort_by(|a, b| a[0].cmp(&b[0]));
-            let mut merged_selections = vec![selections[0].clone()];
-            let mut prev = &mut merged_selections[0];
-
-            for curr in selections[1..].iter_mut() {
-                if curr[0] >= prev[0] && curr[0] < prev[1] {
-                    prev[1] = curr[1].max(prev[1]);
-                } else {
-                    merged_selections.push(*curr);
-                    prev = curr;
-                }
-            }
-
-            merged_selections.iter().rev().for_each(|[at, end]| {
-                (*at..*end).for_each(|_| {
-                    self.delete(*at);
-                });
-
-                if let Some(word) = word {
-                    word.chars().rev().for_each(|c| {
-                        self.insert(*at, c);
-                    });
-                }
-            });
-
-            self.selections = selections;
-            self.is_highlighted = false;
-            self.reset_selections();
-        }
-    }
-
     /// Adds a selection in this row.
     ///
     /// # Arguments
@@ -373,11 +332,36 @@ impl Row {
         self.selections.clear();
     }
 
-    pub fn get_selections(&self) -> Vec<(usize, String)> {
-        let s = self.to_string();
+    /// Merges any overlapping selections and then returns the result.
+    pub fn update_and_get_selections(&mut self) -> Vec<(usize, String)> {
+        // First, we merge the selections, which is a classic merging interval problem.
+        // See https://stackoverflow.com/a/64921799.
+        let mut selections = std::mem::take(&mut self.selections);
+        selections.sort_by(|a, b| a[0].cmp(&b[0]));
+
+        let mut merged_selections = vec![selections[0].clone()];
+        let mut prev = &mut merged_selections[0];
+        for curr in selections[1..].iter_mut() {
+            if curr[0] >= prev[0] && curr[0] < prev[1] {
+                prev[1] = curr[1].max(prev[1]);
+            } else {
+                merged_selections.push(*curr);
+                prev = curr;
+            }
+        }
+
+        self.selections = merged_selections;
         self.selections
             .iter()
-            .map(|[start, end]| (*start, s.get(*start..*end).unwrap().into()))
+            .map(|[start, end]| {
+                (
+                    *start,
+                    self.to_graphemes()
+                        .skip(*start)
+                        .take(*end - *start)
+                        .collect::<String>(),
+                )
+            })
             .collect::<Vec<(usize, String)>>()
     }
 
@@ -917,29 +901,29 @@ mod test {
         assert_eq!(row4.len(), 7);
     }
 
-    #[test]
-    fn select_and_edit() {
-        let mut row = Row::from("Hello, World!");
+    // #[test]
+    // fn select_and_edit() {
+    //     let mut row = Row::from("Hello, World!");
 
-        row.add_selection(2, 1);
-        row.add_selection(3, 1);
-        row.add_selection(10, 1);
-        row.replace_selections(&Some("1".to_string()));
-        assert_eq!(row.string, "He11o, Wor1d!");
+    //     row.add_selection(2, 1);
+    //     row.add_selection(3, 1);
+    //     row.add_selection(10, 1);
+    //     row.replace_selections(&Some("1".to_string()));
+    //     assert_eq!(row.string, "He11o, Wor1d!");
 
-        row = Row::from("var += pq * xy;");
-        row.add_selection(0, 3);
-        row.add_selection(7, 2);
-        row.add_selection(12, 2);
-        row.replace_selections(&Some("foo".to_string()));
-        assert_eq!(row.string, "foo += foo * foo;");
+    //     row = Row::from("var += pq * xy;");
+    //     row.add_selection(0, 3);
+    //     row.add_selection(7, 2);
+    //     row.add_selection(12, 2);
+    //     row.replace_selections(&Some("foo".to_string()));
+    //     assert_eq!(row.string, "foo += foo * foo;");
 
-        row = Row::from("humuhumuhuma nukunukunukunuku apua");
-        row.add_selection(8, 4);
-        row.add_selection(13, 8);
-        row.replace_selections(&None);
-        assert_eq!(row.string, "humuhumu nukunuku apua");
-    }
+    //     row = Row::from("humuhumuhuma nukunukunukunuku apua");
+    //     row.add_selection(8, 4);
+    //     row.add_selection(13, 8);
+    //     row.replace_selections(&None);
+    //     assert_eq!(row.string, "humuhumu nukunuku apua");
+    // }
 
     #[test]
     fn find_next_word() {

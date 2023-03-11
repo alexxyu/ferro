@@ -645,7 +645,7 @@ impl Editor {
                         }
                     }
                     KEY_DELETE_SELECTIONS => {
-                        let selections = self.document.get_selections();
+                        let selections = self.document.update_and_get_selections();
 
                         let mut command_group = CommandGroup::new(CommandType::REPLACE);
                         for (pos, selection) in selections {
@@ -661,7 +661,7 @@ impl Editor {
                     KEY_REPLACE_SELECTIONS => {
                         let replacement = self.prompt_replacement()?;
                         if let Some(replacement_string) = replacement {
-                            let selections = self.document.get_selections();
+                            let selections = self.document.update_and_get_selections();
 
                             let mut command_group = CommandGroup::new(CommandType::REPLACE);
                             for (pos, selection) in selections {
