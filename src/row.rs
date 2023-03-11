@@ -1,5 +1,6 @@
 use std::vec;
 use termion::color;
+use unicode_segmentation::Graphemes;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::highlighting;
@@ -840,6 +841,11 @@ impl Row {
         } else {
             Some(index)
         };
+    }
+
+    /// Gets the row's contents as [Graphemes].
+    pub fn to_graphemes(&self) -> Graphemes {
+        self.string.graphemes(true)
     }
 }
 

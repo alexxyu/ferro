@@ -392,14 +392,13 @@ impl Document {
     /// # Arguments
     ///
     /// * `pos` - the position of the character to retrieve
-    pub fn get_char_in_doc(&self, pos: Position) -> Option<char> {
+    pub fn get_char_in_doc(&self, pos: Position) -> Option<String> {
         let Position { y, x } = pos;
         if let Some(row) = self.rows.get(y) {
-            let row_string = row.to_string();
-            if x >= row_string.len() {
-                Some('\n')
+            if x >= row.len() {
+                Some("\n".into())
             } else {
-                row.to_string().chars().nth(x)
+                row.to_graphemes().nth(x).map(String::from)
             }
         } else {
             None
@@ -421,7 +420,11 @@ impl Document {
 
         if start_y == end_y {
             if let Some(row) = self.rows.get(start_y) {
-                return row.to_string()[start_x..end_x].into();
+                return row
+                    .to_graphemes()
+                    .skip(start_x)
+                    .take(end_x - start_x)
+                    .collect();
             } else {
                 return "".into();
             }
@@ -430,14 +433,14 @@ impl Document {
         (start_y..=end_y)
             .map(|r| {
                 if let Some(row) = self.rows.get(r) {
-                    let row_contents = row.to_string();
+                    let row_contents = row.to_graphemes();
                     if r == start_y {
-                        let s: String = row_contents[start_x..].into();
+                        let s: String = row_contents.skip(start_x).collect();
                         format!("{}\n", s)
                     } else if r == end_y {
-                        row_contents[..end_x].into()
+                        row_contents.take(end_x).collect()
                     } else {
-                        format!("{}\n", row_contents)
+                        format!("{}\n", row_contents.collect::<String>())
                     }
                 } else {
                     "\n".into()
