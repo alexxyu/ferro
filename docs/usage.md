@@ -3,8 +3,14 @@
 ## Default Mode
 | Keybinding   | Function                 |
 |--------------|--------------------------|
-| `Ctrl+Q `    | Quit                     |
+| `Ctrl+Q`     | Quit                     |
 | `Ctrl+S`     | Save                     |
+| `Ctrl+T`     | Start selection          |
+| `Ctrl+Y`     | End selection            |
+| `Ctrl+C`     | Copy selection           |
+| `Ctrl+X`     | Cut selection            |
+| `Ctrl+V`     | Paste selection          |
+| `Ctrl+U`     | Undo last command        |
 | `Ctrl+L`     | Search mode              |
 | `Up/Down`    | Line up/down             |
 | `Left/Right` | Character left/right     |

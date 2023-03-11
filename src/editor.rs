@@ -51,6 +51,7 @@ const KEY_REPLACE_SELECTIONS: Key = Key::Ctrl('r');
 const KEY_START_SELECT: Key = Key::Ctrl('t');
 const KEY_END_SELECT: Key = Key::Ctrl('y');
 const KEY_COPY: Key = Key::Ctrl('c');
+const KEY_CUT: Key = Key::Ctrl('x');
 const KEY_PASTE: Key = Key::Ctrl('v');
 const KEY_UNDO: Key = Key::Ctrl('u');
 
@@ -481,6 +482,23 @@ impl Editor {
             }
             KEY_COPY => {
                 CopyCommand::new().execute(self);
+            }
+            KEY_CUT => {
+                if let Some(Selection { start, end }) = self.selection {
+                    CopyCommand::new().execute(self);
+                    let mut command = DeleteCommand::new(
+                        start,
+                        self.document
+                            .get_doc_content_as_string(start, end)
+                            .to_string(),
+                    );
+
+                    command.execute(self);
+                    self.command_history.push_back(CommandGroup::from_command(
+                        Box::new(RefCell::new(command)),
+                        CommandType::PASTE,
+                    ));
+                }
             }
             KEY_PASTE => {
                 let mut command = PasteCommand::new(self.cursor_position, self.clipboard.clone());
