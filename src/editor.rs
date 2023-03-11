@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -5,31 +6,54 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
+use bounded_vec_deque::BoundedVecDeque;
 use shunting::{MathContext, ShuntingParser};
 use signal_hook::consts::SIGWINCH;
 use termion::event::{Event, Key, MouseEvent};
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::commands::copy::CopyCommand;
+use crate::commands::delete::DeleteCommand;
+use crate::commands::group::{CommandGroup, CommandType};
+use crate::commands::insert::InsertCommand;
+use crate::commands::paste::PasteCommand;
+use crate::commands::{BoxedCommand, Command};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 2;
+const HISTORY_LIMIT: usize = 10;
 
 // Key mappings for navigation
-const POS_UP: Key = Key::Up;
-const POS_DOWN: Key = Key::Down;
-const POS_LEFT: Key = Key::Left;
-const POS_RIGHT: Key = Key::Right;
-const WORD_LEFT: Key = Key::Alt('q');
-const WORD_RIGHT: Key = Key::Alt('w');
-const LINE_LEFT: Key = Key::Alt('b');
-const LINE_RIGHT: Key = Key::Alt('f');
-const PAGE_UP: Key = Key::Alt('t');
-const PAGE_DOWN: Key = Key::Alt('g');
-const DOC_UP: Key = Key::Home;
-const DOC_DOWN: Key = Key::End;
+const KEY_POS_UP: Key = Key::Up;
+const KEY_POS_DOWN: Key = Key::Down;
+const KEY_POS_LEFT: Key = Key::Left;
+const KEY_POS_RIGHT: Key = Key::Right;
+const KEY_WORD_LEFT: Key = Key::Alt('q');
+const KEY_WORD_RIGHT: Key = Key::Alt('w');
+const KEY_LINE_LEFT: Key = Key::Alt('b');
+const KEY_LINE_RIGHT: Key = Key::Alt('f');
+const KEY_PAGE_UP: Key = Key::Alt('t');
+const KEY_PAGE_DOWN: Key = Key::Alt('g');
+const KEY_DOC_UP: Key = Key::Home;
+const KEY_DOC_DOWN: Key = Key::End;
+
+// Key mappings for control
+const KEY_QUIT: Key = Key::Ctrl('q');
+const KEY_SAVE: Key = Key::Ctrl('s');
+const KEY_SEARCH: Key = Key::Ctrl('l');
+const KEY_SELECT_FORWARD: Key = Key::Ctrl('f');
+const KEY_SELECT_BACKWARD: Key = Key::Ctrl('b');
+const KEY_DELETE_SELECTIONS: Key = Key::Ctrl('d');
+const KEY_REPLACE_SELECTIONS: Key = Key::Ctrl('r');
+const KEY_START_SELECT: Key = Key::Ctrl('t');
+const KEY_END_SELECT: Key = Key::Ctrl('y');
+const KEY_COPY: Key = Key::Ctrl('c');
+const KEY_CUT: Key = Key::Ctrl('x');
+const KEY_PASTE: Key = Key::Ctrl('v');
+const KEY_UNDO: Key = Key::Ctrl('u');
 
 fn die(e: &std::io::Error) {
     Terminal::clear_screen();
@@ -44,16 +68,48 @@ pub enum SearchDirection {
 }
 
 /// A position represented by (x, y) coordinates.
-#[derive(Default, Copy, Clone, PartialEq, Debug)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
+}
+
+impl Ord for Position {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.y == other.y {
+            self.x.cmp(&other.x)
+        } else {
+            self.y.cmp(&other.y)
+        }
+    }
+}
+
+impl PartialOrd for Position {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl std::ops::Add for Position {
+    type Output = Position;
+
+    fn add(self, other: Position) -> Position {
+        Position {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
 }
 
 /// A status message printed at the bottom of the editor.
 struct StatusMessage {
     text: String,
     time: Instant,
+}
+
+pub struct Selection {
+    start: Position,
+    end: Position,
 }
 
 impl StatusMessage {
@@ -90,6 +146,12 @@ pub struct Editor {
     quit_times: u8,
     /// The word to be highlighted, if any
     highlighted_word: Option<String>,
+    /// Current selection, if any
+    pub selection: Option<Selection>,
+    /// Clipboard contents, if any
+    pub clipboard: Option<String>,
+    /// History of commands
+    command_history: BoundedVecDeque<CommandGroup>,
     /// Flag for the SIGWINCH signal that is set when the terminal window is resized
     _sigwinch_flag: Arc<AtomicBool>,
 }
@@ -125,6 +187,9 @@ impl Editor {
             status_message: StatusMessage::from(initial_status),
             quit_times: QUIT_TIMES,
             highlighted_word: None,
+            selection: None,
+            clipboard: None,
+            command_history: BoundedVecDeque::new(HISTORY_LIMIT),
             _sigwinch_flag: flag,
         }
     }
@@ -246,6 +311,7 @@ impl Editor {
         println!("{}\r", row);
     }
 
+    /// Draws the rows onto the terminal screen.
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
         for terminal_row in 0..height {
@@ -280,16 +346,16 @@ impl Editor {
         if self.document.filename.is_none() {
             let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
             if new_name.is_none() {
-                self.status_message = StatusMessage::from("Save aborted.".to_string());
+                self.set_status_message("Save aborted.".to_string());
                 return;
             }
 
             self.document.filename = new_name;
         }
         if self.document.save().is_ok() {
-            self.status_message = StatusMessage::from("File saved successfully.".to_string());
+            self.set_status_message("File saved successfully.".to_string());
         } else {
-            self.status_message = StatusMessage::from("Error writing file!".to_string());
+            self.set_status_message("Error writing file!".to_string());
         }
     }
 
@@ -304,7 +370,7 @@ impl Editor {
                 |editor, key, query| {
                     let mut moved = false;
                     match key {
-                        Key::Ctrl('f') => {
+                        KEY_SELECT_FORWARD => {
                             editor
                                 .document
                                 .add_selection(editor.cursor_position, query.len());
@@ -312,18 +378,18 @@ impl Editor {
                             editor.move_cursor(Key::Right);
                             moved = true;
                         }
-                        POS_RIGHT | POS_DOWN => {
+                        KEY_POS_RIGHT | KEY_POS_DOWN => {
                             direction = SearchDirection::Forward;
                             editor.move_cursor(Key::Right);
                             moved = true;
                         }
-                        Key::Ctrl('b') => {
+                        KEY_SELECT_BACKWARD => {
                             editor
                                 .document
                                 .add_selection(editor.cursor_position, query.len());
                             direction = SearchDirection::Backward;
                         }
-                        POS_LEFT | POS_UP => direction = SearchDirection::Backward,
+                        KEY_POS_LEFT | KEY_POS_UP => direction = SearchDirection::Backward,
                         _ => (),
                     }
 
@@ -402,9 +468,9 @@ impl Editor {
     /// Will return `Err` if I/O error encountered
     fn process_keypress(&mut self, keypress: Key) -> Result<(), std::io::Error> {
         match keypress {
-            Key::Ctrl('q') => {
+            KEY_QUIT => {
                 if self.quit_times > 0 && self.document.is_dirty() {
-                    self.status_message = StatusMessage::from(format!(
+                    self.set_status_message(format!(
                         "WARNING! File has unsaved changes. Press Ctrl-Q {} more time(s) to quit.",
                         self.quit_times
                     ));
@@ -414,31 +480,134 @@ impl Editor {
 
                 self.should_quit = true;
             }
-            Key::Ctrl('s') => self.save(),
-            Key::Ctrl('l') => self.search(),
+            KEY_COPY => {
+                CopyCommand::new().execute(self);
+            }
+            KEY_CUT => {
+                if let Some(Selection { start, end }) = self.selection {
+                    CopyCommand::new().execute(self);
+                    let mut command = DeleteCommand::new(
+                        start,
+                        self.document
+                            .get_doc_content_as_string(start, end)
+                            .to_string(),
+                    );
+
+                    command.execute(self);
+                    self.command_history.push_back(CommandGroup::from_command(
+                        Box::new(RefCell::new(command)),
+                        CommandType::PASTE,
+                    ));
+                }
+            }
+            KEY_PASTE => {
+                let mut command = PasteCommand::new(self.cursor_position, self.clipboard.clone());
+                command.execute(self);
+                self.command_history.push_back(CommandGroup::from_command(
+                    Box::new(RefCell::new(command)),
+                    CommandType::PASTE,
+                ));
+            }
+            KEY_UNDO => {
+                if let Some(mut command) = self.command_history.pop_back() {
+                    command.undo(self);
+                }
+            }
+            KEY_SAVE => self.save(),
+            KEY_SEARCH => self.search(),
+            KEY_START_SELECT => {
+                self.selection = Some(Selection {
+                    start: self.cursor_position,
+                    end: self.cursor_position,
+                });
+            }
+            KEY_END_SELECT => {
+                if let Some(Selection { start, end: _ }) = self.selection {
+                    self.selection = Some(Selection {
+                        start: start.min(self.cursor_position),
+                        end: start.max(self.cursor_position),
+                    });
+                }
+            }
             Key::Alt('c') => self.evaluate_expression(),
             Key::Char(c) => {
-                let indent = self.document.insert(&mut self.cursor_position, c);
-                (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
+                let mut command = InsertCommand::new(self.cursor_position, c.to_string());
+                command.execute(self);
+                self.merge_or_add_command(Box::new(RefCell::new(command)), CommandType::INSERT);
             }
-            Key::Delete => self.document.delete(&self.cursor_position),
+            Key::Delete => {
+                let Position { x, y } = self.cursor_position;
+                if y < self.document.len() - 1
+                    || x < self.document.row(y).unwrap_or(&Row::default()).len()
+                {
+                    let mut command = DeleteCommand::new(
+                        self.cursor_position,
+                        self.document
+                            .get_char_in_doc(self.cursor_position)
+                            .unwrap()
+                            .to_string(),
+                    );
+
+                    command.execute(self);
+                    self.merge_or_add_command(Box::new(RefCell::new(command)), CommandType::DELETE);
+                }
+            }
             Key::Backspace => {
                 if self.cursor_position.x > 0 || self.cursor_position.y > 0 {
                     self.move_cursor(Key::Left);
-                    self.document.delete(&self.cursor_position);
+                    let mut command = DeleteCommand::new(
+                        self.cursor_position,
+                        self.document
+                            .get_char_in_doc(self.cursor_position)
+                            .unwrap()
+                            .to_string(),
+                    );
+
+                    command.execute(self);
+                    self.merge_or_add_command(
+                        Box::new(RefCell::new(command)),
+                        CommandType::BACKSPACE,
+                    );
                 }
             }
-            POS_UP | POS_DOWN | POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT
-            | LINE_RIGHT | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => self.move_cursor(keypress),
+            KEY_POS_UP | KEY_POS_DOWN | KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT
+            | KEY_WORD_RIGHT | KEY_LINE_LEFT | KEY_LINE_RIGHT | KEY_PAGE_UP | KEY_PAGE_DOWN
+            | KEY_DOC_UP | KEY_DOC_DOWN => self.move_cursor(keypress),
             _ => (),
         }
 
         self.scroll();
         if self.quit_times < QUIT_TIMES {
             self.quit_times = QUIT_TIMES;
-            self.status_message = StatusMessage::from(String::new());
+            self.set_status_message(String::new());
         }
         Ok(())
+    }
+
+    /// Adds the command to the command history. If the most recent command is of the
+    /// same type as the new command, then the new command will be merged with the
+    /// most recent one.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - the [BoxedCommand] to add
+    /// * `command_type` - the [CommandType] of `command`
+    fn merge_or_add_command(&mut self, command: BoxedCommand, command_type: CommandType) {
+        let mut can_merge_with_last_command = false;
+        if let Some(last_command) = self.command_history.back_mut() {
+            if last_command.command_type == command_type {
+                can_merge_with_last_command = true;
+            }
+        }
+
+        if can_merge_with_last_command {
+            if let Some(last_command) = self.command_history.back_mut() {
+                last_command.add(command);
+            }
+        } else {
+            self.command_history
+                .push_back(CommandGroup::from_command(command, command_type));
+        }
     }
 
     /// Processes a mousepress event.
@@ -481,7 +650,7 @@ impl Editor {
     {
         let mut result = String::new();
         loop {
-            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.set_status_message(format!("{}{}", prompt, result));
             self.refresh_screen()?;
             let event = Terminal::read_event()?;
             if let Event::Key(key) = event {
@@ -502,17 +671,38 @@ impl Editor {
                             result.push(c);
                         }
                     }
-                    Key::Ctrl('d') => {
-                        self.document.delete_selections();
+                    KEY_DELETE_SELECTIONS => {
+                        let selections = self.document.update_and_get_selections();
+
+                        let mut command_group = CommandGroup::new(CommandType::REPLACE);
+                        for (pos, selection) in selections {
+                            let delete_command = DeleteCommand::new(pos, selection);
+                            command_group.add(Box::new(RefCell::new(delete_command)));
+                        }
+
+                        command_group.execute(self);
+                        self.command_history.push_back(command_group);
+                        self.document.reset_selections();
                         break;
                     }
-                    Key::Ctrl('r') => {
+                    KEY_REPLACE_SELECTIONS => {
                         let replacement = self.prompt_replacement()?;
-                        if replacement.is_some() {
-                            self.document.replace_selections(&replacement);
-                        } else {
-                            self.document.reset_selections();
+                        if let Some(replacement_string) = replacement {
+                            let selections = self.document.update_and_get_selections();
+
+                            let mut command_group = CommandGroup::new(CommandType::REPLACE);
+                            for (pos, selection) in selections {
+                                let delete_command = DeleteCommand::new(pos, selection);
+                                let insert_command =
+                                    InsertCommand::new(pos, replacement_string.clone());
+                                command_group.add(Box::new(RefCell::new(delete_command)));
+                                command_group.add(Box::new(RefCell::new(insert_command)));
+                            }
+
+                            command_group.execute(self);
+                            self.command_history.push_back(command_group);
                         }
+                        self.document.reset_selections();
                         break;
                     }
                     Key::Esc => {
@@ -526,7 +716,7 @@ impl Editor {
             }
         }
 
-        self.status_message = StatusMessage::from(String::new());
+        self.set_status_message(String::new());
         if result.is_empty() {
             Ok(None)
         } else {
@@ -542,7 +732,7 @@ impl Editor {
     fn prompt_replacement(&mut self) -> Result<Option<String>, std::io::Error> {
         let mut result = String::new();
         loop {
-            self.status_message = StatusMessage::from(format!("Replace with: {}", result));
+            self.set_status_message(format!("Replace with: {}", result));
             self.refresh_screen()?;
             let event = Terminal::read_event()?;
             if let Event::Key(key) = event {
@@ -569,7 +759,7 @@ impl Editor {
             }
         }
 
-        self.status_message = StatusMessage::from(String::new());
+        self.set_status_message(String::new());
         if result.is_empty() {
             Ok(None)
         } else {
@@ -597,6 +787,52 @@ impl Editor {
         }
     }
 
+    /// Sets the editor's status message
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - the message to display
+    pub fn set_status_message(&mut self, msg: String) {
+        self.status_message = StatusMessage::from(msg);
+    }
+
+    /// Copies the selection into the clipboard
+    pub fn copy_to_clipboard(&mut self) {
+        if let Some(Selection { start, end }) = self.selection {
+            self.clipboard = Some(self.document.get_doc_content_as_string(start, end));
+        }
+    }
+
+    /// Inserts a string at the specified position
+    ///
+    /// # Arguments
+    ///
+    /// * `at` - the position at which to insert
+    /// * `content` - the string to insert
+    /// * `move_right` - whether to move the cursor right after each insertion
+    pub fn insert_string_at(&mut self, at: &Position, content: &String, move_right: bool) {
+        self.cursor_position = *at;
+        for c in content.chars() {
+            let indent = self.document.insert(&mut self.cursor_position, c);
+            if move_right {
+                (0..indent + 1).for_each(|_| self.move_cursor(Key::Right));
+            }
+        }
+    }
+
+    /// Deletes characters starting at the specified position
+    ///
+    /// # Arguments
+    ///
+    /// * `at` - the position at which to delete characters
+    /// * `n_chars_to_delete` - the number of characters to delete from the position
+    pub fn delete_chars_at(&mut self, at: &Position, n_chars_to_delete: usize) {
+        (0..n_chars_to_delete).for_each(|_| {
+            self.document.delete(&at);
+        });
+        self.cursor_position = *at;
+    }
+
     /// Moves the cursor based on the key that was pressed.
     ///
     /// # Arguments
@@ -614,13 +850,13 @@ impl Editor {
         };
 
         match key {
-            POS_UP => y = y.saturating_sub(1),
-            POS_DOWN => {
+            KEY_POS_UP => y = y.saturating_sub(1),
+            KEY_POS_DOWN => {
                 if y < height {
                     y = y.saturating_add(1);
                 }
             }
-            POS_LEFT => {
+            KEY_POS_LEFT => {
                 if x > 0 {
                     x -= 1;
                 } else if y > 0 {
@@ -632,7 +868,7 @@ impl Editor {
                     }
                 }
             }
-            POS_RIGHT => {
+            KEY_POS_RIGHT => {
                 if x < width {
                     x += 1;
                 } else if y < height {
@@ -640,7 +876,7 @@ impl Editor {
                     x = 0;
                 }
             }
-            WORD_LEFT => {
+            KEY_WORD_LEFT => {
                 if let Some(pos) = self
                     .document
                     .find_next_word(&self.cursor_position, SearchDirection::Backward)
@@ -649,7 +885,7 @@ impl Editor {
                     y = pos.y;
                 }
             }
-            WORD_RIGHT => {
+            KEY_WORD_RIGHT => {
                 if let Some(pos) = self
                     .document
                     .find_next_word(&self.cursor_position, SearchDirection::Forward)
@@ -658,12 +894,12 @@ impl Editor {
                     y = pos.y;
                 }
             }
-            LINE_LEFT => x = 0,
-            LINE_RIGHT => x = width,
-            PAGE_UP => y = y.saturating_sub(terminal_height),
-            PAGE_DOWN => y = y.saturating_add(terminal_height).min(height),
-            DOC_UP => y = 0,
-            DOC_DOWN => y = height,
+            KEY_LINE_LEFT => x = 0,
+            KEY_LINE_RIGHT => x = width,
+            KEY_PAGE_UP => y = y.saturating_sub(terminal_height),
+            KEY_PAGE_DOWN => y = y.saturating_add(terminal_height).min(height),
+            KEY_DOC_UP => y = 0,
+            KEY_DOC_DOWN => y = height,
             _ => (),
         }
 
@@ -674,11 +910,14 @@ impl Editor {
         };
 
         let is_vertical_control = |k: Key| match k {
-            POS_UP | POS_DOWN | PAGE_UP | PAGE_DOWN | DOC_UP | DOC_DOWN => true,
+            KEY_POS_UP | KEY_POS_DOWN | KEY_PAGE_UP | KEY_PAGE_DOWN | KEY_DOC_UP | KEY_DOC_DOWN => {
+                true
+            }
             _ => false,
         };
         let is_horizontal_control = |k: Key| match k {
-            POS_LEFT | POS_RIGHT | WORD_LEFT | WORD_RIGHT | LINE_LEFT | LINE_RIGHT => true,
+            KEY_POS_LEFT | KEY_POS_RIGHT | KEY_WORD_LEFT | KEY_WORD_RIGHT | KEY_LINE_LEFT
+            | KEY_LINE_RIGHT => true,
             _ => false,
         };
 
@@ -694,5 +933,25 @@ impl Editor {
             // We need to update the cursor's max_position iff the keypress controls the cursor's x position
             self.max_position = Some(x);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::Position;
+
+    #[test]
+    fn position_cmp() {
+        let mut pos1 = Position { x: 0, y: 0 };
+        let mut pos2 = Position { x: 0, y: 0 };
+        assert_eq!(pos1, pos2);
+
+        pos2 = Position { x: 5, y: 2 };
+        assert!(pos2 > pos1);
+        assert_eq!(pos2.min(pos1), pos1);
+
+        pos1 = Position { x: 7, y: 2 };
+        assert!(pos1 > pos2);
+        assert_eq!(pos1.max(pos2), pos1);
     }
 }

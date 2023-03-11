@@ -136,6 +136,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bounded-vec-deque"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2225b558afc76c596898f5f1b3fc35cfce0eb1b13635cbd7d1b2a7177dc10ccd"
+
+[[package]]
 name = "bumpalo"
 version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -223,8 +229,9 @@ dependencies = [
 
 [[package]]
 name = "ferro"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
+ "bounded-vec-deque",
  "lazy_static",
  "serde",
  "serde_json",

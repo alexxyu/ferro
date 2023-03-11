@@ -1,5 +1,6 @@
 use std::vec;
 use termion::color;
+use unicode_segmentation::Graphemes;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::highlighting;
@@ -315,47 +316,6 @@ impl Row {
         }
     }
 
-    /// Replaces all selections made in the row.
-    ///
-    /// # Arguments
-    ///
-    /// * `replace` - the string to replace the selections with
-    pub fn replace_selections(&mut self, word: &Option<String>) {
-        if self.selections.len() > 0 {
-            // See https://stackoverflow.com/a/64921799
-            let mut selections = std::mem::take(&mut self.selections);
-
-            selections.sort_by(|a, b| a[0].cmp(&b[0]));
-            let mut merged_selections = vec![selections[0].clone()];
-            let mut prev = &mut merged_selections[0];
-
-            for curr in selections[1..].iter_mut() {
-                if curr[0] >= prev[0] && curr[0] < prev[1] {
-                    prev[1] = curr[1].max(prev[1]);
-                } else {
-                    merged_selections.push(*curr);
-                    prev = curr;
-                }
-            }
-
-            merged_selections.iter().rev().for_each(|[at, end]| {
-                (*at..*end).for_each(|_| {
-                    self.delete(*at);
-                });
-
-                if let Some(word) = word {
-                    word.chars().rev().for_each(|c| {
-                        self.insert(*at, c);
-                    });
-                }
-            });
-
-            self.selections = selections;
-            self.is_highlighted = false;
-            self.reset_selections();
-        }
-    }
-
     /// Adds a selection in this row.
     ///
     /// # Arguments
@@ -370,6 +330,42 @@ impl Row {
     /// Resets all selections made in the row.
     pub fn reset_selections(&mut self) {
         self.selections.clear();
+    }
+
+    /// Merges any overlapping selections and then returns the result.
+    pub fn update_and_get_selections(&mut self) -> Vec<(usize, String)> {
+        if self.selections.len() > 1 {
+            // First, we merge the selections, which is a classic merging interval problem.
+            // See https://stackoverflow.com/a/64921799.
+            let mut selections = std::mem::take(&mut self.selections);
+            selections.sort_by(|a, b| a[0].cmp(&b[0]));
+
+            let mut merged_selections = vec![selections[0].clone()];
+            let mut prev = &mut merged_selections[0];
+            for curr in selections[1..].iter_mut() {
+                if curr[0] >= prev[0] && curr[0] < prev[1] {
+                    prev[1] = curr[1].max(prev[1]);
+                } else {
+                    merged_selections.push(*curr);
+                    prev = curr;
+                }
+            }
+
+            self.selections = merged_selections;
+        }
+
+        self.selections
+            .iter()
+            .map(|[start, end]| {
+                (
+                    *start,
+                    self.to_graphemes()
+                        .skip(*start)
+                        .take(*end - *start)
+                        .collect::<String>(),
+                )
+            })
+            .collect::<Vec<(usize, String)>>()
     }
 
     /// Checks whether there is a string match in the row to highlight.
@@ -818,11 +814,6 @@ impl Row {
         self.len == 0
     }
 
-    /// Gets the row's contents as bytes.
-    pub fn as_bytes(&self) -> &[u8] {
-        self.string.as_bytes()
-    }
-
     /// Gets the number of leading spaces in the row.
     pub fn get_leading_spaces(&self) -> Option<usize> {
         let mut index = 0;
@@ -837,6 +828,17 @@ impl Row {
         } else {
             Some(index)
         };
+    }
+
+    /// Gets the row's contents as [Graphemes].
+    pub fn to_graphemes(&self) -> Graphemes {
+        self.string.graphemes(true)
+    }
+}
+
+impl ToString for Row {
+    fn to_string(&self) -> String {
+        self.string.clone()
     }
 }
 
@@ -909,21 +911,47 @@ mod test {
         row.add_selection(2, 1);
         row.add_selection(3, 1);
         row.add_selection(10, 1);
-        row.replace_selections(&Some("1".to_string()));
-        assert_eq!(row.string, "He11o, Wor1d!");
+        assert_eq!(
+            row.update_and_get_selections(),
+            vec![
+                (2usize, "l".into()),
+                (3usize, "l".into()),
+                (10usize, "l".into())
+            ]
+        );
 
         row = Row::from("var += pq * xy;");
         row.add_selection(0, 3);
         row.add_selection(7, 2);
         row.add_selection(12, 2);
-        row.replace_selections(&Some("foo".to_string()));
-        assert_eq!(row.string, "foo += foo * foo;");
+        assert_eq!(
+            row.update_and_get_selections(),
+            vec![
+                (0usize, "var".into()),
+                (7usize, "pq".into()),
+                (12usize, "xy".into())
+            ]
+        );
 
         row = Row::from("humuhumuhuma nukunukunukunuku apua");
-        row.add_selection(8, 4);
-        row.add_selection(13, 8);
-        row.replace_selections(&None);
-        assert_eq!(row.string, "humuhumu nukunuku apua");
+        row.add_selection(0, 4);
+        assert_eq!(
+            row.update_and_get_selections(),
+            vec![(0usize, "humu".into())]
+        );
+        row.add_selection(2, 4);
+        assert_eq!(
+            row.update_and_get_selections(),
+            vec![(0usize, "humuhu".into())]
+        );
+        row.add_selection(3, 9);
+        assert_eq!(
+            row.update_and_get_selections(),
+            vec![(0usize, "humuhumuhuma".into())]
+        );
+
+        row.reset_selections();
+        assert_eq!(row.update_and_get_selections(), Vec::new());
     }
 
     #[test]

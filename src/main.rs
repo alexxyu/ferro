@@ -1,5 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::must_use_candidate)]
+mod commands;
 mod document;
 mod editor;
 mod filetype;
