@@ -310,6 +310,7 @@ impl Editor {
         println!("{}\r", row);
     }
 
+    /// Draws the rows onto the terminal screen.
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
         for terminal_row in 0..height {
@@ -565,6 +566,14 @@ impl Editor {
         Ok(())
     }
 
+    /// Adds the command to the command history. If the most recent command is of the
+    /// same type as the new command, then the new command will be merged with the
+    /// most recent one.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - the [BoxedCommand] to add
+    /// * `command_type` - the [CommandType] of `command`
     fn merge_or_add_command(&mut self, command: BoxedCommand, command_type: CommandType) {
         let mut can_merge_with_last_command = false;
         if let Some(last_command) = self.command_history.back_mut() {

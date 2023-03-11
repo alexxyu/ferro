@@ -97,7 +97,7 @@ impl Document {
             .unwrap_or(DEFAULT_SPACES_PER_TAB)
     }
 
-    /// Inserts a newline character ('\n') at the given position
+    /// Inserts a newline character ('\n') at the given position.
     ///
     /// # Arguments
     ///
@@ -164,6 +164,11 @@ impl Document {
         return indent;
     }
 
+    /// Unhighlights all rows starting from the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `start` - the index of the row from which to start unhighlighting
     fn unhighlight_rows(&mut self, start: usize) {
         let start = start.saturating_sub(1);
         for row in self.rows.iter_mut().skip(start) {

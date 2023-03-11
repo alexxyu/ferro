@@ -16,6 +16,11 @@ pub struct CommandGroup {
 }
 
 impl CommandGroup {
+    /// Returns an empty [CommandGroup].
+    ///
+    /// # Arguments
+    ///
+    /// * `command_type` - the [CommandType] of the new [CommandGroup]
     pub fn new(command_type: CommandType) -> Self {
         return CommandGroup {
             commands: Vec::new(),
@@ -23,6 +28,12 @@ impl CommandGroup {
         };
     }
 
+    /// Returns a [CommandGroup] with a specified command.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - the [BoxedCommand] that the new [CommandGroup] will contain
+    /// * `command_type` - the [CommandType] of the new [CommandGroup]
     pub fn from_command(command: BoxedCommand, command_type: CommandType) -> Self {
         return CommandGroup {
             commands: vec![command],
@@ -30,6 +41,11 @@ impl CommandGroup {
         };
     }
 
+    /// Adds a command to this [CommandGroup].
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - the [BoxedCommand] to add
     pub fn add(&mut self, command: BoxedCommand) {
         self.commands.push(command);
     }
